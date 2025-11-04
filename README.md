@@ -90,6 +90,21 @@ npm start
 
 打开浏览器访问 `http://localhost:3000`
 
+## 测试数据
+
+如果你想快速测试系统功能，可以创建测试数据：
+
+```bash
+npm run test-data
+```
+
+这将创建以下测试账号：
+- 裁判长: chief_judge1 / test123
+- 裁判: judge1, judge2 / test123
+- 选手: contestant1, contestant2, contestant3 / test123
+
+以及一个示例赛事"第三届中华人民共和国职业技能大赛"和相关的赛项、模块。
+
 ## 目录结构
 
 ```
