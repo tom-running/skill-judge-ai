@@ -33,9 +33,24 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+// 自动注册AI评估插件
+async function initializePlugins() {
+  try {
+    const { autoRegisterAppPrototypeModules } = require('../registerPlugins');
+    console.log('Initializing AI evaluation plugins...');
+    await autoRegisterAppPrototypeModules();
+    console.log('AI evaluation plugins initialized');
+  } catch (error) {
+    console.error('Failed to initialize AI plugins:', error.message);
+  }
+}
+
+app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Open http://localhost:${PORT} in your browser`);
+  
+  // 初始化插件
+  await initializePlugins();
 });
 
 module.exports = app;

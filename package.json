@@ -6,7 +6,8 @@
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "migrate": "node database/migrate.js",
-    "test-data": "node database/createTestData.js"
+    "test-data": "node database/createTestData.js",
+    "register-plugins": "node registerPlugins.js"
   },
   "keywords": [],
   "author": "",
