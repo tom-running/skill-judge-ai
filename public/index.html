@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>世界职业技能大赛 AI 评分系统</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/antd@5.11.5/dist/reset.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/antd@5.11.5/dist/antd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.5/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+        'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    #root {
+      min-height: 100vh;
+    }
+    .status-pending { color: #8c8c8c; }
+    .status-in_progress { color: #1890ff; }
+    .status-finished { color: #52c41a; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const {
+      Layout, Menu, Button, Form, Input, Table, Modal, Select, DatePicker,
+      message, Card, Tag, Tabs, Upload, Space, Descriptions, InputNumber,
+      Row, Col, Divider, Typography, Badge
+    } = antd;
+    const { Header, Content, Sider } = Layout;
+    const { Option } = Select;
+    const { Title, Text } = Typography;
+    const { TextArea } = Input;
+
+    // API配置
+    axios.defaults.baseURL = '/api';
+
+    // 设置Token
+    const setAuthToken = (token) => {
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        localStorage.setItem('token', token);
+      } else {
+        delete axios.defaults.headers.common['Authorization'];
+        localStorage.removeItem('token');
+      }
+    };
+
+    // 初始化Token
+    const token = localStorage.getItem('token');
+    if (token) {
+      setAuthToken(token);
+    }
+
+    // 登录组件
+    function LoginPage({ onLogin }) {
+      const [loading, setLoading] = useState(false);
+
+      const onFinish = async (values) => {
+        setLoading(true);
+        try {
+          const response = await axios.post('/auth/login', values);
+          setAuthToken(response.data.token);
+          onLogin(response.data.user);
+          message.success('登录成功');
+        } catch (error) {
+          message.error(error.response?.data?.error || '登录失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          background: '#f0f2f5'
+        }}>
+          <Card title="世界职业技能大赛 AI 评分系统" style={{ width: 400 }}>
+            <Form onFinish={onFinish} layout="vertical">
+              <Form.Item
+                label="用户名"
+                name="username"
+                rules={[{ required: true, message: '请输入用户名' }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="密码"
+                name="password"
+                rules={[{ required: true, message: '请输入密码' }]}
+              >
+                <Input.Password />
+              </Form.Item>
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading} block>
+                  登录
+                </Button>
+              </Form.Item>
+            </Form>
+            <Text type="secondary">默认管理员: admin / admin123</Text>
+          </Card>
+        </div>
+      );
+    }
+
+    // 用户管理
+    function UserManagement() {
+      const [users, setUsers] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [modalVisible, setModalVisible] = useState(false);
+      const [editingUser, setEditingUser] = useState(null);
+      const [form] = Form.useForm();
+
+      const loadUsers = async () => {
+        setLoading(true);
+        try {
+          const response = await axios.get('/users');
+          setUsers(response.data);
+        } catch (error) {
+          message.error('加载用户失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadUsers();
+      }, []);
+
+      const handleAdd = () => {
+        setEditingUser(null);
+        form.resetFields();
+        setModalVisible(true);
+      };
+
+      const handleEdit = (user) => {
+        setEditingUser(user);
+        form.setFieldsValue(user);
+        setModalVisible(true);
+      };
+
+      const handleDelete = async (id) => {
+        try {
+          await axios.delete(`/users/${id}`);
+          message.success('删除成功');
+          loadUsers();
+        } catch (error) {
+          message.error('删除失败');
+        }
+      };
+
+      const handleSubmit = async (values) => {
+        try {
+          if (editingUser) {
+            await axios.put(`/users/${editingUser.id}`, values);
+            message.success('更新成功');
+          } else {
+            await axios.post('/users', values);
+            message.success('创建成功');
+          }
+          setModalVisible(false);
+          loadUsers();
+        } catch (error) {
+          message.error(error.response?.data?.error || '操作失败');
+        }
+      };
+
+      const columns = [
+        { title: 'ID', dataIndex: 'id', key: 'id' },
+        { title: '用户名', dataIndex: 'username', key: 'username' },
+        { title: '姓名', dataIndex: 'name', key: 'name' },
+        {
+          title: '角色',
+          dataIndex: 'role',
+          key: 'role',
+          render: (role) => {
+            const roleMap = {
+              admin: { text: '管理员', color: 'red' },
+              chief_judge: { text: '裁判长', color: 'blue' },
+              judge: { text: '裁判', color: 'green' },
+              contestant: { text: '选手', color: 'orange' }
+            };
+            const r = roleMap[role] || { text: role, color: 'default' };
+            return <Tag color={r.color}>{r.text}</Tag>;
+          }
+        },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => (
+            <Space>
+              <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>
+              <Button size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
+            </Space>
+          )
+        }
+      ];
+
+      return (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <Button type="primary" onClick={handleAdd}>添加用户</Button>
+          </div>
+          <Table
+            loading={loading}
+            dataSource={users}
+            columns={columns}
+            rowKey="id"
+          />
+          <Modal
+            title={editingUser ? '编辑用户' : '添加用户'}
+            open={modalVisible}
+            onCancel={() => setModalVisible(false)}
+            footer={null}
+          >
+            <Form form={form} onFinish={handleSubmit} layout="vertical">
+              {!editingUser && (
+                <Form.Item
+                  label="用户名"
+                  name="username"
+                  rules={[{ required: true }]}
+                >
+                  <Input />
+                </Form.Item>
+              )}
+              <Form.Item
+                label="姓名"
+                name="name"
+                rules={[{ required: true }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="角色"
+                name="role"
+                rules={[{ required: true }]}
+              >
+                <Select>
+                  <Option value="admin">管理员</Option>
+                  <Option value="chief_judge">裁判长</Option>
+                  <Option value="judge">裁判</Option>
+                  <Option value="contestant">选手</Option>
+                </Select>
+              </Form.Item>
+              {!editingUser && (
+                <Form.Item
+                  label="密码"
+                  name="password"
+                  rules={[{ required: true }]}
+                >
+                  <Input.Password />
+                </Form.Item>
+              )}
+              {editingUser && (
+                <Form.Item label="新密码（留空表示不修改）" name="password">
+                  <Input.Password />
+                </Form.Item>
+              )}
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">提交</Button>
+                  <Button onClick={() => setModalVisible(false)}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Modal>
+        </div>
+      );
+    }
+
+    // 赛事管理
+    function CompetitionManagement() {
+      const [competitions, setCompetitions] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [modalVisible, setModalVisible] = useState(false);
+      const [editingItem, setEditingItem] = useState(null);
+      const [form] = Form.useForm();
+
+      const loadData = async () => {
+        setLoading(true);
+        try {
+          const response = await axios.get('/competitions');
+          setCompetitions(response.data);
+        } catch (error) {
+          message.error('加载赛事失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadData();
+      }, []);
+
+      const handleAdd = () => {
+        setEditingItem(null);
+        form.resetFields();
+        setModalVisible(true);
+      };
+
+      const handleEdit = (item) => {
+        setEditingItem(item);
+        form.setFieldsValue({
+          ...item,
+          start_time: item.start_time ? dayjs(item.start_time) : null,
+          end_time: item.end_time ? dayjs(item.end_time) : null
+        });
+        setModalVisible(true);
+      };
+
+      const handleDelete = async (id) => {
+        try {
+          await axios.delete(`/competitions/${id}`);
+          message.success('删除成功');
+          loadData();
+        } catch (error) {
+          message.error('删除失败');
+        }
+      };
+
+      const handleSubmit = async (values) => {
+        try {
+          const data = {
+            ...values,
+            start_time: values.start_time.toISOString(),
+            end_time: values.end_time.toISOString()
+          };
+          if (editingItem) {
+            await axios.put(`/competitions/${editingItem.id}`, data);
+            message.success('更新成功');
+          } else {
+            await axios.post('/competitions', data);
+            message.success('创建成功');
+          }
+          setModalVisible(false);
+          loadData();
+        } catch (error) {
+          message.error('操作失败');
+        }
+      };
+
+      const columns = [
+        { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
+        { title: '赛事名称', dataIndex: 'name', key: 'name' },
+        {
+          title: '开始时间',
+          dataIndex: 'start_time',
+          key: 'start_time',
+          render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+        },
+        {
+          title: '结束时间',
+          dataIndex: 'end_time',
+          key: 'end_time',
+          render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+        },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => (
+            <Space>
+              <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>
+              <Button size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
+            </Space>
+          )
+        }
+      ];
+
+      return (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <Button type="primary" onClick={handleAdd}>添加赛事</Button>
+          </div>
+          <Table
+            loading={loading}
+            dataSource={competitions}
+            columns={columns}
+            rowKey="id"
+          />
+          <Modal
+            title={editingItem ? '编辑赛事' : '添加赛事'}
+            open={modalVisible}
+            onCancel={() => setModalVisible(false)}
+            footer={null}
+            width={600}
+          >
+            <Form form={form} onFinish={handleSubmit} layout="vertical">
+              <Form.Item label="赛事名称" name="name" rules={[{ required: true }]}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="开始时间" name="start_time" rules={[{ required: true }]}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item label="结束时间" name="end_time" rules={[{ required: true }]}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">提交</Button>
+                  <Button onClick={() => setModalVisible(false)}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Modal>
+        </div>
+      );
+    }
+
+    // 赛项管理
+    function EventManagement({ user }) {
+      const [events, setEvents] = useState([]);
+      const [competitions, setCompetitions] = useState([]);
+      const [users, setUsers] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [modalVisible, setModalVisible] = useState(false);
+      const [assignModalVisible, setAssignModalVisible] = useState(false);
+      const [assignType, setAssignType] = useState('');
+      const [selectedEvent, setSelectedEvent] = useState(null);
+      const [editingItem, setEditingItem] = useState(null);
+      const [form] = Form.useForm();
+      const [assignForm] = Form.useForm();
+
+      const loadData = async () => {
+        setLoading(true);
+        try {
+          const [eventsRes, competitionsRes, usersRes] = await Promise.all([
+            axios.get('/events'),
+            axios.get('/competitions'),
+            axios.get('/users')
+          ]);
+          setEvents(eventsRes.data);
+          setCompetitions(competitionsRes.data);
+          setUsers(usersRes.data);
+        } catch (error) {
+          message.error('加载数据失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadData();
+      }, []);
+
+      const handleAdd = () => {
+        setEditingItem(null);
+        form.resetFields();
+        setModalVisible(true);
+      };
+
+      const handleEdit = (item) => {
+        setEditingItem(item);
+        form.setFieldsValue({
+          ...item,
+          start_time: item.start_time ? dayjs(item.start_time) : null,
+          end_time: item.end_time ? dayjs(item.end_time) : null
+        });
+        setModalVisible(true);
+      };
+
+      const handleDelete = async (id) => {
+        try {
+          await axios.delete(`/events/${id}`);
+          message.success('删除成功');
+          loadData();
+        } catch (error) {
+          message.error('删除失败');
+        }
+      };
+
+      const handleSubmit = async (values) => {
+        try {
+          const data = {
+            ...values,
+            start_time: values.start_time.toISOString(),
+            end_time: values.end_time.toISOString()
+          };
+          if (editingItem) {
+            await axios.put(`/events/${editingItem.id}`, data);
+            message.success('更新成功');
+          } else {
+            await axios.post('/events', data);
+            message.success('创建成功');
+          }
+          setModalVisible(false);
+          loadData();
+        } catch (error) {
+          message.error('操作失败');
+        }
+      };
+
+      const handleAssign = (event, type) => {
+        setSelectedEvent(event);
+        setAssignType(type);
+        assignForm.resetFields();
+        setAssignModalVisible(true);
+      };
+
+      const handleAssignSubmit = async (values) => {
+        try {
+          if (assignType === 'chief_judge') {
+            await axios.post(`/events/${selectedEvent.id}/chief-judges`, {
+              chief_judge_id: values.user_id
+            });
+          } else if (assignType === 'judge') {
+            await axios.post(`/events/${selectedEvent.id}/judges`, {
+              judge_id: values.user_id
+            });
+          } else if (assignType === 'contestant') {
+            await axios.post(`/events/${selectedEvent.id}/contestants`, {
+              contestant_id: values.user_id
+            });
+          } else if (assignType === 'judge_contestant') {
+            await axios.post(`/events/${selectedEvent.id}/judge-contestants`, values);
+          }
+          message.success('分配成功');
+          setAssignModalVisible(false);
+          loadData();
+        } catch (error) {
+          message.error('分配失败');
+        }
+      };
+
+      const columns = [
+        { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+        { title: '赛项名称', dataIndex: 'name', key: 'name' },
+        { title: '赛事', dataIndex: 'competition_name', key: 'competition_name' },
+        {
+          title: '开始时间',
+          dataIndex: 'start_time',
+          key: 'start_time',
+          render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+        },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => (
+            <Space>
+              <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>
+              {user.role === 'admin' && (
+                <>
+                  <Button size="small" onClick={() => handleAssign(record, 'chief_judge')}>分配裁判长</Button>
+                  <Button size="small" onClick={() => handleAssign(record, 'judge')}>分配裁判</Button>
+                  <Button size="small" onClick={() => handleAssign(record, 'contestant')}>分配选手</Button>
+                  <Button size="small" onClick={() => handleAssign(record, 'judge_contestant')}>分配裁判-选手</Button>
+                </>
+              )}
+              <Button size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
+            </Space>
+          ),
+          width: 500
+        }
+      ];
+
+      const getRoleUsers = () => {
+        if (assignType === 'chief_judge') {
+          return users.filter(u => u.role === 'chief_judge');
+        } else if (assignType === 'judge') {
+          return users.filter(u => u.role === 'judge');
+        } else if (assignType === 'contestant') {
+          return users.filter(u => u.role === 'contestant');
+        }
+        return users;
+      };
+
+      return (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <Button type="primary" onClick={handleAdd}>添加赛项</Button>
+          </div>
+          <Table
+            loading={loading}
+            dataSource={events}
+            columns={columns}
+            rowKey="id"
+          />
+          <Modal
+            title={editingItem ? '编辑赛项' : '添加赛项'}
+            open={modalVisible}
+            onCancel={() => setModalVisible(false)}
+            footer={null}
+            width={600}
+          >
+            <Form form={form} onFinish={handleSubmit} layout="vertical">
+              <Form.Item label="赛事" name="competition_id" rules={[{ required: true }]}>
+                <Select>
+                  {competitions.map(c => (
+                    <Option key={c.id} value={c.id}>{c.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item label="赛项名称" name="name" rules={[{ required: true }]}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="开始时间" name="start_time" rules={[{ required: true }]}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item label="结束时间" name="end_time" rules={[{ required: true }]}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">提交</Button>
+                  <Button onClick={() => setModalVisible(false)}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Modal>
+          <Modal
+            title={`分配${assignType === 'chief_judge' ? '裁判长' : assignType === 'judge' ? '裁判' : assignType === 'contestant' ? '选手' : '裁判-选手'}`}
+            open={assignModalVisible}
+            onCancel={() => setAssignModalVisible(false)}
+            footer={null}
+          >
+            <Form form={assignForm} onFinish={handleAssignSubmit} layout="vertical">
+              {assignType === 'judge_contestant' ? (
+                <>
+                  <Form.Item label="裁判" name="judge_id" rules={[{ required: true }]}>
+                    <Select>
+                      {users.filter(u => u.role === 'judge').map(u => (
+                        <Option key={u.id} value={u.id}>{u.name} ({u.username})</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <Form.Item label="选手" name="contestant_id" rules={[{ required: true }]}>
+                    <Select>
+                      {users.filter(u => u.role === 'contestant').map(u => (
+                        <Option key={u.id} value={u.id}>{u.name} ({u.username})</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </>
+              ) : (
+                <Form.Item label="用户" name="user_id" rules={[{ required: true }]}>
+                  <Select>
+                    {getRoleUsers().map(u => (
+                      <Option key={u.id} value={u.id}>{u.name} ({u.username})</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              )}
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">提交</Button>
+                  <Button onClick={() => setAssignModalVisible(false)}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Modal>
+        </div>
+      );
+    }
+
+    // 模块管理
+    function ModuleManagement({ user }) {
+      const [modules, setModules] = useState([]);
+      const [events, setEvents] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [modalVisible, setModalVisible] = useState(false);
+      const [criteriaModalVisible, setCriteriaModalVisible] = useState(false);
+      const [selectedModule, setSelectedModule] = useState(null);
+      const [scoringCriteria, setScoringCriteria] = useState(null);
+      const [editingItem, setEditingItem] = useState(null);
+      const [form] = Form.useForm();
+      const [itemForm] = Form.useForm();
+
+      const loadData = async () => {
+        setLoading(true);
+        try {
+          const [modulesRes, eventsRes] = await Promise.all([
+            axios.get('/modules'),
+            axios.get('/events')
+          ]);
+          setModules(modulesRes.data);
+          setEvents(eventsRes.data);
+        } catch (error) {
+          message.error('加载数据失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadData();
+      }, []);
+
+      const handleAdd = () => {
+        setEditingItem(null);
+        form.resetFields();
+        setModalVisible(true);
+      };
+
+      const handleEdit = (item) => {
+        setEditingItem(item);
+        form.setFieldsValue(item);
+        setModalVisible(true);
+      };
+
+      const handleDelete = async (id) => {
+        try {
+          await axios.delete(`/modules/${id}`);
+          message.success('删除成功');
+          loadData();
+        } catch (error) {
+          message.error('删除失败');
+        }
+      };
+
+      const handleSubmit = async (values) => {
+        try {
+          if (editingItem) {
+            await axios.put(`/modules/${editingItem.id}`, values);
+            message.success('更新成功');
+          } else {
+            await axios.post('/modules', values);
+            message.success('创建成功');
+          }
+          setModalVisible(false);
+          loadData();
+        } catch (error) {
+          message.error('操作失败');
+        }
+      };
+
+      const handleStatusChange = async (id, status) => {
+        try {
+          await axios.patch(`/modules/${id}/status`, { status });
+          message.success('状态更新成功');
+          loadData();
+        } catch (error) {
+          message.error('状态更新失败');
+        }
+      };
+
+      const handleManageCriteria = async (module) => {
+        setSelectedModule(module);
+        try {
+          const response = await axios.get(`/scoring/modules/${module.id}/criteria`);
+          setScoringCriteria(response.data);
+          setCriteriaModalVisible(true);
+        } catch (error) {
+          message.error('加载评分标准失败');
+        }
+      };
+
+      const handleCreateCriteria = async () => {
+        try {
+          const response = await axios.post(`/scoring/modules/${selectedModule.id}/criteria`);
+          setScoringCriteria(response.data);
+          message.success('创建成功');
+        } catch (error) {
+          message.error('创建失败');
+        }
+      };
+
+      const handleAddItem = async (values) => {
+        try {
+          await axios.post(`/scoring/criteria/${scoringCriteria.id}/items`, values);
+          message.success('添加成功');
+          itemForm.resetFields();
+          handleManageCriteria(selectedModule);
+        } catch (error) {
+          message.error('添加失败');
+        }
+      };
+
+      const handleDeleteItem = async (itemId) => {
+        try {
+          await axios.delete(`/scoring/items/${itemId}`);
+          message.success('删除成功');
+          handleManageCriteria(selectedModule);
+        } catch (error) {
+          message.error('删除失败');
+        }
+      };
+
+      const columns = [
+        { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+        { title: '模块名称', dataIndex: 'name', key: 'name' },
+        {
+          title: '赛项',
+          dataIndex: 'event_id',
+          key: 'event_id',
+          render: (id) => events.find(e => e.id === id)?.name || '-'
+        },
+        {
+          title: '时长(分钟)',
+          dataIndex: 'duration_minutes',
+          key: 'duration_minutes'
+        },
+        {
+          title: '状态',
+          dataIndex: 'status',
+          key: 'status',
+          render: (status) => {
+            const statusMap = {
+              pending: { text: '未开始', color: 'default' },
+              in_progress: { text: '进行中', color: 'processing' },
+              finished: { text: '已结束', color: 'success' }
+            };
+            const s = statusMap[status] || { text: status, color: 'default' };
+            return <Badge status={s.color} text={s.text} />;
+          }
+        },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => (
+            <Space wrap>
+              <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>
+              {['admin', 'chief_judge'].includes(user.role) && (
+                <>
+                  <Select
+                    size="small"
+                    value={record.status}
+                    onChange={(val) => handleStatusChange(record.id, val)}
+                    style={{ width: 100 }}
+                  >
+                    <Option value="pending">未开始</Option>
+                    <Option value="in_progress">进行中</Option>
+                    <Option value="finished">已结束</Option>
+                  </Select>
+                  <Button size="small" onClick={() => handleManageCriteria(record)}>评分标准</Button>
+                </>
+              )}
+              <Button size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
+            </Space>
+          ),
+          width: 380
+        }
+      ];
+
+      return (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <Button type="primary" onClick={handleAdd}>添加模块</Button>
+          </div>
+          <Table
+            loading={loading}
+            dataSource={modules}
+            columns={columns}
+            rowKey="id"
+          />
+          <Modal
+            title={editingItem ? '编辑模块' : '添加模块'}
+            open={modalVisible}
+            onCancel={() => setModalVisible(false)}
+            footer={null}
+          >
+            <Form form={form} onFinish={handleSubmit} layout="vertical">
+              <Form.Item label="赛项" name="event_id" rules={[{ required: true }]}>
+                <Select>
+                  {events.map(e => (
+                    <Option key={e.id} value={e.id}>{e.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item label="模块名称" name="name" rules={[{ required: true }]}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="时长(分钟)" name="duration_minutes" rules={[{ required: true }]}>
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">提交</Button>
+                  <Button onClick={() => setModalVisible(false)}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Modal>
+          <Modal
+            title={`评分标准管理 - ${selectedModule?.name}`}
+            open={criteriaModalVisible}
+            onCancel={() => setCriteriaModalVisible(false)}
+            footer={null}
+            width={800}
+          >
+            {!scoringCriteria ? (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <p>尚未创建评分标准</p>
+                <Button type="primary" onClick={handleCreateCriteria}>创建评分标准</Button>
+              </div>
+            ) : (
+              <div>
+                <Title level={5}>评分项列表</Title>
+                <Table
+                  dataSource={scoringCriteria.items.filter(item => item.id)}
+                  columns={[
+                    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+                    {
+                      title: '描述',
+                      dataIndex: 'description',
+                      key: 'description',
+                      ellipsis: true
+                    },
+                    {
+                      title: '类型',
+                      dataIndex: 'evaluation_type',
+                      key: 'evaluation_type',
+                      render: (type) => type === 'objective' ? '客观' : '主观'
+                    },
+                    {
+                      title: '满分',
+                      dataIndex: 'max_score',
+                      key: 'max_score'
+                    },
+                    {
+                      title: '操作',
+                      key: 'action',
+                      render: (_, record) => (
+                        <Button size="small" danger onClick={() => handleDeleteItem(record.id)}>
+                          删除
+                        </Button>
+                      )
+                    }
+                  ]}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                />
+                <Divider />
+                <Title level={5}>添加评分项</Title>
+                <Form form={itemForm} onFinish={handleAddItem} layout="vertical">
+                  <Form.Item
+                    label="评分标准描述（支持富文本/HTML）"
+                    name="description"
+                    rules={[{ required: true }]}
+                  >
+                    <TextArea rows={3} />
+                  </Form.Item>
+                  <Form.Item label="评估类型" name="evaluation_type" rules={[{ required: true }]}>
+                    <Select>
+                      <Option value="objective">客观</Option>
+                      <Option value="subjective">主观</Option>
+                    </Select>
+                  </Form.Item>
+                  <Form.Item label="满分" name="max_score" rules={[{ required: true }]}>
+                    <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
+                  </Form.Item>
+                  <Form.Item label="排序" name="sort_order">
+                    <InputNumber min={0} style={{ width: '100%' }} />
+                  </Form.Item>
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit">添加评分项</Button>
+                  </Form.Item>
+                </Form>
+              </div>
+            )}
+          </Modal>
+        </div>
+      );
+    }
+
+    // 评分管理
+    function ScoringManagement({ user }) {
+      const [modules, setModules] = useState([]);
+      const [selectedModule, setSelectedModule] = useState(null);
+      const [records, setRecords] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [scoreModalVisible, setScoreModalVisible] = useState(false);
+      const [selectedRecord, setSelectedRecord] = useState(null);
+
+      const loadModules = async () => {
+        try {
+          const response = await axios.get('/modules');
+          setModules(response.data);
+        } catch (error) {
+          message.error('加载模块失败');
+        }
+      };
+
+      const loadRecords = async (moduleId) => {
+        setLoading(true);
+        try {
+          const response = await axios.get(`/scoring/modules/${moduleId}/records`);
+          setRecords(response.data);
+        } catch (error) {
+          message.error('加载评分记录失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadModules();
+      }, []);
+
+      useEffect(() => {
+        if (selectedModule) {
+          loadRecords(selectedModule);
+        }
+      }, [selectedModule]);
+
+      const handleScore = async (record) => {
+        try {
+          const response = await axios.get(
+            `/scoring/modules/${selectedModule}/contestants/${record.contestant_id}/record`
+          );
+          setSelectedRecord(response.data);
+          setScoreModalVisible(true);
+        } catch (error) {
+          message.error('加载评分详情失败');
+        }
+      };
+
+      const handleUpdateScore = async (itemId, score) => {
+        try {
+          await axios.put(
+            `/scoring/modules/${selectedModule}/contestants/${selectedRecord.contestant_id}/score`,
+            {
+              scoring_item_id: itemId,
+              judge_score: score
+            }
+          );
+          message.success('评分成功');
+          handleScore(selectedRecord);
+          loadRecords(selectedModule);
+        } catch (error) {
+          message.error('评分失败');
+        }
+      };
+
+      const columns = [
+        { title: '选手', dataIndex: 'contestant_name', key: 'contestant_name' },
+        { title: '用户名', dataIndex: 'username', key: 'username' },
+        {
+          title: '总分',
+          key: 'total_score',
+          render: (_, record) => {
+            const items = record.item_results.filter(item => item.id);
+            const judgeTotal = items.reduce((sum, item) => sum + (parseFloat(item.judge_score) || 0), 0);
+            const aiTotal = items.reduce((sum, item) => sum + (parseFloat(item.ai_score) || 0), 0);
+            return (
+              <div>
+                <div>裁判: {judgeTotal.toFixed(2)}</div>
+                <div>AI: {aiTotal.toFixed(2)}</div>
+              </div>
+            );
+          }
+        },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => (
+            <Button size="small" onClick={() => handleScore(record)}>查看/评分</Button>
+          )
+        }
+      ];
+
+      return (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <Select
+              placeholder="选择模块"
+              style={{ width: 300 }}
+              onChange={setSelectedModule}
+              value={selectedModule}
+            >
+              {modules.map(m => (
+                <Option key={m.id} value={m.id}>{m.name}</Option>
+              ))}
+            </Select>
+          </div>
+          {selectedModule && (
+            <Table
+              loading={loading}
+              dataSource={records}
+              columns={columns}
+              rowKey="id"
+            />
+          )}
+          <Modal
+            title={`评分详情 - ${selectedRecord?.contestant_name}`}
+            open={scoreModalVisible}
+            onCancel={() => setScoreModalVisible(false)}
+            footer={null}
+            width={900}
+          >
+            {selectedRecord && (
+              <div>
+                {selectedRecord.item_results.filter(item => item.id).map((item, index) => (
+                  <Card key={item.id} style={{ marginBottom: 16 }} size="small">
+                    <Row gutter={16}>
+                      <Col span={24}>
+                        <Text strong>评分项 {index + 1}:</Text>
+                        <div dangerouslySetInnerHTML={{ __html: item.description }} />
+                      </Col>
+                      <Col span={8}>
+                        <Text>类型: {item.evaluation_type === 'objective' ? '客观' : '主观'}</Text>
+                      </Col>
+                      <Col span={8}>
+                        <Text>满分: {item.max_score}</Text>
+                      </Col>
+                    </Row>
+                    <Divider />
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Text strong>AI评分: </Text>
+                        {item.ai_score !== null && item.ai_score !== undefined ? (
+                          <Tag color="blue">{item.ai_score}</Tag>
+                        ) : (
+                          <Text type="secondary">未评分</Text>
+                        )}
+                      </Col>
+                      <Col span={12}>
+                        <Text strong>AI建议: </Text>
+                        <div>{item.ai_suggestion || '-'}</div>
+                      </Col>
+                    </Row>
+                    <Divider />
+                    <Row gutter={16}>
+                      <Col span={24}>
+                        <Text strong>裁判评分: </Text>
+                        <InputNumber
+                          min={0}
+                          max={item.max_score}
+                          step={0.01}
+                          value={item.judge_score}
+                          onChange={(val) => handleUpdateScore(item.scoring_item_id, val)}
+                          style={{ width: 120, marginLeft: 8 }}
+                        />
+                      </Col>
+                    </Row>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </Modal>
+        </div>
+      );
+    }
+
+    // 主应用
+    function App() {
+      const [user, setUser] = useState(null);
+      const [selectedMenu, setSelectedMenu] = useState('competitions');
+
+      useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          axios.get('/auth/profile')
+            .then(response => setUser(response.data.user))
+            .catch(() => {
+              localStorage.removeItem('token');
+              setAuthToken(null);
+            });
+        }
+      }, []);
+
+      const handleLogout = () => {
+        setUser(null);
+        setAuthToken(null);
+      };
+
+      if (!user) {
+        return <LoginPage onLogin={setUser} />;
+      }
+
+      const menuItems = [
+        { key: 'competitions', label: '赛事管理', roles: ['admin', 'chief_judge', 'judge', 'contestant'] },
+        { key: 'events', label: '赛项管理', roles: ['admin', 'chief_judge', 'judge', 'contestant'] },
+        { key: 'modules', label: '模块管理', roles: ['admin', 'chief_judge', 'judge', 'contestant'] },
+        { key: 'scoring', label: '评分管理', roles: ['admin', 'chief_judge', 'judge'] },
+        { key: 'users', label: '用户管理', roles: ['admin'] },
+      ].filter(item => item.roles.includes(user.role));
+
+      const renderContent = () => {
+        switch (selectedMenu) {
+          case 'users':
+            return <UserManagement />;
+          case 'competitions':
+            return <CompetitionManagement />;
+          case 'events':
+            return <EventManagement user={user} />;
+          case 'modules':
+            return <ModuleManagement user={user} />;
+          case 'scoring':
+            return <ScoringManagement user={user} />;
+          default:
+            return <div>选择一个菜单项</div>;
+        }
+      };
+
+      return (
+        <Layout style={{ minHeight: '100vh' }}>
+          <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
+              世界职业技能大赛 AI 评分系统
+            </div>
+            <div style={{ color: 'white' }}>
+              <Space>
+                <span>{user.name} ({user.role})</span>
+                <Button type="link" onClick={handleLogout} style={{ color: 'white' }}>
+                  退出
+                </Button>
+              </Space>
+            </div>
+          </Header>
+          <Layout>
+            <Sider width={200} style={{ background: '#fff' }}>
+              <Menu
+                mode="inline"
+                selectedKeys={[selectedMenu]}
+                style={{ height: '100%', borderRight: 0 }}
+                items={menuItems}
+                onSelect={({ key }) => setSelectedMenu(key)}
+              />
+            </Sider>
+            <Layout style={{ padding: '24px' }}>
+              <Content
+                style={{
+                  padding: 24,
+                  margin: 0,
+                  minHeight: 280,
+                  background: '#fff',
+                }}
+              >
+                {renderContent()}
+              </Content>
+            </Layout>
+          </Layout>
+        </Layout>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>

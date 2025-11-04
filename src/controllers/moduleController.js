@@ -1,0 +1,319 @@
+const db = require('../config/database');
+const { hasEventAccess, getEventIdByModuleId } = require('../middleware/permissions');
+const { aiRegistry } = require('../services/aiEvaluator');
+
+exports.getAllModules = async (req, res) => {
+  try {
+    const { event_id } = req.query;
+    const { user } = req;
+
+    let query = 'SELECT * FROM modules';
+    const params = [];
+
+    if (event_id) {
+      // 检查权限
+      const hasAccess = await hasEventAccess(user.id, event_id, user.role);
+      if (!hasAccess) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      query += ' WHERE event_id = $1';
+      params.push(event_id);
+    }
+
+    query += ' ORDER BY created_at';
+
+    const result = await db.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get modules error:', error);
+    res.status(500).json({ error: 'Failed to fetch modules' });
+  }
+};
+
+exports.getModuleById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user } = req;
+
+    const result = await db.query('SELECT * FROM modules WHERE id = $1', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Module not found' });
+    }
+
+    const module = result.rows[0];
+
+    // 检查权限
+    const hasAccess = await hasEventAccess(user.id, module.event_id, user.role);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // 获取赛题附件（仅进行中或已结束时可见，或管理员/裁判长可见）
+    let problemAttachments = [];
+    if (module.status !== 'pending' || ['admin', 'chief_judge'].includes(user.role)) {
+      const problemResult = await db.query(
+        'SELECT * FROM problem_attachments WHERE module_id = $1',
+        [id]
+      );
+      problemAttachments = problemResult.rows;
+    }
+
+    // 获取评分标准（仅管理员和裁判长可见）
+    let scoringCriteria = null;
+    if (['admin', 'chief_judge'].includes(user.role)) {
+      const criteriaResult = await db.query(
+        `SELECT sc.*, 
+         json_agg(
+           json_build_object(
+             'id', si.id,
+             'description', si.description,
+             'evaluation_type', si.evaluation_type,
+             'max_score', si.max_score,
+             'sort_order', si.sort_order
+           ) ORDER BY si.sort_order
+         ) as items
+         FROM scoring_criteria sc
+         LEFT JOIN scoring_items si ON sc.id = si.criteria_id
+         WHERE sc.module_id = $1
+         GROUP BY sc.id`,
+        [id]
+      );
+      if (criteriaResult.rows.length > 0) {
+        scoringCriteria = criteriaResult.rows[0];
+      }
+    }
+
+    res.json({
+      ...module,
+      problem_attachments: problemAttachments,
+      scoring_criteria: scoringCriteria
+    });
+  } catch (error) {
+    console.error('Get module error:', error);
+    res.status(500).json({ error: 'Failed to fetch module' });
+  }
+};
+
+exports.createModule = async (req, res) => {
+  try {
+    const { event_id, name, duration_minutes } = req.body;
+    const { user } = req;
+
+    // 检查权限
+    const hasAccess = await hasEventAccess(user.id, event_id, user.role);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const result = await db.query(
+      `INSERT INTO modules (event_id, name, duration_minutes, status) 
+       VALUES ($1, $2, $3, 'pending') 
+       RETURNING *`,
+      [event_id, name, duration_minutes]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Create module error:', error);
+    res.status(500).json({ error: 'Failed to create module' });
+  }
+};
+
+exports.updateModule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, duration_minutes } = req.body;
+
+    const result = await db.query(
+      `UPDATE modules 
+       SET name = $1, duration_minutes = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 
+       RETURNING *`,
+      [name, duration_minutes, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Module not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Update module error:', error);
+    res.status(500).json({ error: 'Failed to update module' });
+  }
+};
+
+exports.deleteModule = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(
+      'DELETE FROM modules WHERE id = $1 RETURNING id',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Module not found' });
+    }
+
+    res.json({ message: 'Module deleted successfully' });
+  } catch (error) {
+    console.error('Delete module error:', error);
+    res.status(500).json({ error: 'Failed to delete module' });
+  }
+};
+
+// 更新模块状态
+exports.updateModuleStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['pending', 'in_progress', 'finished'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const result = await db.query(
+      `UPDATE modules 
+       SET status = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2 
+       RETURNING *`,
+      [status, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Module not found' });
+    }
+
+    const module = result.rows[0];
+
+    // 如果状态变为finished，触发AI评估
+    if (status === 'finished') {
+      setTimeout(() => triggerAIEvaluation(id), 1000);
+    }
+
+    res.json(module);
+  } catch (error) {
+    console.error('Update module status error:', error);
+    res.status(500).json({ error: 'Failed to update module status' });
+  }
+};
+
+// 触发AI评估（异步）
+async function triggerAIEvaluation(moduleId) {
+  try {
+    console.log(`Triggering AI evaluation for module ${moduleId}`);
+
+    // 检查是否有注册的评估器
+    if (!aiRegistry.hasEvaluator(moduleId)) {
+      console.log(`No AI evaluator registered for module ${moduleId}`);
+      return;
+    }
+
+    // 获取评分标准
+    const criteriaResult = await db.query(
+      `SELECT sc.*, 
+       json_agg(
+         json_build_object(
+           'id', si.id,
+           'description', si.description,
+           'evaluation_type', si.evaluation_type,
+           'max_score', si.max_score
+         ) ORDER BY si.sort_order
+       ) as items
+       FROM scoring_criteria sc
+       LEFT JOIN scoring_items si ON sc.id = si.criteria_id
+       WHERE sc.module_id = $1
+       GROUP BY sc.id`,
+      [moduleId]
+    );
+
+    if (criteriaResult.rows.length === 0) {
+      console.log(`No scoring criteria found for module ${moduleId}`);
+      return;
+    }
+
+    const scoringCriteria = criteriaResult.rows[0];
+
+    // 获取赛题附件
+    const problemAttachmentsResult = await db.query(
+      'SELECT * FROM problem_attachments WHERE module_id = $1',
+      [moduleId]
+    );
+
+    // 获取所有选手
+    const moduleResult = await db.query(
+      'SELECT event_id FROM modules WHERE id = $1',
+      [moduleId]
+    );
+    const eventId = moduleResult.rows[0].event_id;
+
+    const contestantsResult = await db.query(
+      `SELECT u.id 
+       FROM users u
+       JOIN event_contestants ec ON u.id = ec.contestant_id
+       WHERE ec.event_id = $1`,
+      [eventId]
+    );
+
+    // 为每个选手进行评估
+    for (const contestant of contestantsResult.rows) {
+      try {
+        // 获取选手答题附件
+        const answerAttachmentsResult = await db.query(
+          'SELECT * FROM answer_attachments WHERE module_id = $1 AND contestant_id = $2',
+          [moduleId, contestant.id]
+        );
+
+        if (answerAttachmentsResult.rows.length === 0) {
+          console.log(`No answer attachments for contestant ${contestant.id}`);
+          continue;
+        }
+
+        // 调用AI评估
+        const evaluationResults = await aiRegistry.evaluate(
+          moduleId,
+          scoringCriteria,
+          problemAttachmentsResult.rows,
+          answerAttachmentsResult.rows
+        );
+
+        // 保存评估结果
+        if (evaluationResults) {
+          // 确保有评分记录
+          const recordResult = await db.query(
+            `INSERT INTO scoring_records (module_id, contestant_id)
+             VALUES ($1, $2)
+             ON CONFLICT (module_id, contestant_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+             RETURNING id`,
+            [moduleId, contestant.id]
+          );
+
+          const recordId = recordResult.rows[0].id;
+
+          // 保存每个评分项的结果
+          for (const result of evaluationResults) {
+            await db.query(
+              `INSERT INTO scoring_item_results 
+               (scoring_record_id, scoring_item_id, ai_score, ai_suggestion)
+               VALUES ($1, $2, $3, $4)
+               ON CONFLICT (scoring_record_id, scoring_item_id) 
+               DO UPDATE SET ai_score = $3, ai_suggestion = $4, updated_at = CURRENT_TIMESTAMP`,
+              [recordId, result.scoring_item_id, result.ai_score, result.ai_suggestion]
+            );
+          }
+
+          console.log(`AI evaluation completed for contestant ${contestant.id}`);
+        }
+      } catch (error) {
+        console.error(`Error evaluating contestant ${contestant.id}:`, error);
+      }
+    }
+
+    console.log(`AI evaluation completed for module ${moduleId}`);
+  } catch (error) {
+    console.error(`AI evaluation error for module ${moduleId}:`, error);
+  }
+}
