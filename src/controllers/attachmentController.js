@@ -245,11 +245,28 @@ exports.downloadAttachment = async (req, res) => {
   try {
     const { filepath } = req.query;
 
-    if (!filepath || !filepath.startsWith(path.join(__dirname, '../../uploads'))) {
+    if (!filepath) {
       return res.status(400).json({ error: 'Invalid file path' });
     }
 
-    res.download(filepath);
+    // 获取绝对路径并验证
+    const uploadsDir = path.resolve(__dirname, '../../uploads');
+    const requestedPath = path.resolve(filepath);
+
+    // 检查文件是否在uploads目录内，防止目录遍历攻击
+    if (!requestedPath.startsWith(uploadsDir)) {
+      return res.status(400).json({ error: 'Invalid file path' });
+    }
+
+    // 检查文件是否存在
+    const fs = require('fs').promises;
+    try {
+      await fs.access(requestedPath);
+    } catch {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    res.download(requestedPath);
   } catch (error) {
     console.error('Download attachment error:', error);
     res.status(500).json({ error: 'Failed to download attachment' });

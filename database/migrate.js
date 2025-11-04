@@ -160,6 +160,7 @@ async function migrate() {
       ON CONFLICT (username) DO NOTHING
     `, ['admin', adminPassword, 'Administrator', 'admin']);
     console.log('Default admin user created (username: admin, password: admin123)');
+    console.log('⚠️  SECURITY WARNING: Please change the default password immediately after first login!');
     
     process.exit(0);
   } catch (error) {
