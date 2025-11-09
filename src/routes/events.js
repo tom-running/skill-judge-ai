@@ -20,6 +20,7 @@ router.post('/:id/contestants', auth, requireRole('admin', 'chief_judge'), event
 router.delete('/:id/contestants/:contestant_id', auth, requireRole('admin', 'chief_judge'), eventController.removeContestant);
 
 router.post('/:id/judge-contestants', auth, requireRole('admin', 'chief_judge'), eventController.assignJudgeContestant);
+router.get('/:id/judge-contestants', auth, eventController.getJudgeContestantAssignments);
 router.delete('/:id/judge-contestants', auth, requireRole('admin', 'chief_judge'), eventController.removeJudgeContestant);
 
 module.exports = router;

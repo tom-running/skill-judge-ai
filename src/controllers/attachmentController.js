@@ -60,9 +60,19 @@ exports.getProblemAttachments = async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // 只有进行中或已结束时可见，或管理员/裁判长可见
-    if (module.status === 'pending' && !['admin', 'chief_judge'].includes(user.role)) {
-      return res.status(403).json({ error: 'Problem attachments not available yet' });
+    // 赛题可见性规则：
+    // - 管理员/裁判长：随时可见
+    // - 选手：进行中或已结束时可见
+    // - 裁判：评分中或评分结束时可见
+    const visibleStatuses = {
+      admin: ['pending', 'in_progress', 'finished', 'scoring', 'scoring_finished'],
+      chief_judge: ['pending', 'in_progress', 'finished', 'scoring', 'scoring_finished'],
+      contestant: ['in_progress', 'finished', 'scoring', 'scoring_finished'],
+      judge: ['scoring', 'scoring_finished']
+    };
+
+    if (!visibleStatuses[user.role].includes(module.status)) {
+      return res.status(403).json({ error: 'Problem attachments not available in current status' });
     }
 
     const result = await db.query(
@@ -143,6 +153,19 @@ exports.uploadAnswerAttachment = async (req, res) => {
        RETURNING *`,
       [module_id, user.id, req.file.originalname, req.file.path]
     );
+
+    // 自动创建评分记录（如果不存在的话）
+    try {
+      await db.query(
+        `INSERT INTO scoring_records (module_id, contestant_id)
+         VALUES ($1, $2)
+         ON CONFLICT (module_id, contestant_id) DO NOTHING`,
+        [module_id, user.id]
+      );
+    } catch (scoringError) {
+      console.error('Error creating scoring record:', scoringError);
+      // 不影响文件上传成功，仅记录错误
+    }
 
     res.status(201).json(result.rows[0]);
   } catch (error) {

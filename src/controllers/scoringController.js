@@ -184,38 +184,62 @@ exports.getScoringRecords = async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
+    // 查询所有参与该赛项的选手，并左连接评分记录
     let query = `
-      SELECT sr.*, u.username, u.name as contestant_name,
-      json_agg(
-        json_build_object(
-          'id', sir.id,
-          'scoring_item_id', sir.scoring_item_id,
-          'judge_score', sir.judge_score,
-          'ai_score', sir.ai_score,
-          'ai_suggestion', sir.ai_suggestion,
-          'description', si.description,
-          'evaluation_type', si.evaluation_type,
-          'max_score', si.max_score
-        ) ORDER BY si.sort_order
-      ) as item_results
-      FROM scoring_records sr
-      JOIN users u ON sr.contestant_id = u.id
+      SELECT 
+        COALESCE(sr.id, 0) as id,
+        u.id as contestant_id,
+        u.username, 
+        u.name as contestant_name,
+        COALESCE(
+          json_agg(
+            CASE WHEN sir.id IS NOT NULL THEN
+              json_build_object(
+                'id', sir.id,
+                'scoring_item_id', sir.scoring_item_id,
+                'judge_score', sir.judge_score,
+                'ai_score', sir.ai_score,
+                'ai_suggestion', sir.ai_suggestion,
+                'description', si.description,
+                'evaluation_type', si.evaluation_type,
+                'max_score', si.max_score
+              )
+            ELSE
+              json_build_object(
+                'id', null,
+                'scoring_item_id', si.id,
+                'judge_score', null,
+                'ai_score', null,
+                'ai_suggestion', null,
+                'description', si.description,
+                'evaluation_type', si.evaluation_type,
+                'max_score', si.max_score
+              )
+            END ORDER BY COALESCE(si.sort_order, 0)
+          ) FILTER (WHERE si.id IS NOT NULL),
+          '[]'::json
+        ) as item_results
+      FROM users u
+      JOIN event_contestants ec ON u.id = ec.contestant_id
+      LEFT JOIN scoring_records sr ON sr.module_id = $1 AND sr.contestant_id = u.id
       LEFT JOIN scoring_item_results sir ON sr.id = sir.scoring_record_id
-      LEFT JOIN scoring_items si ON sir.scoring_item_id = si.id
-      WHERE sr.module_id = $1
+      LEFT JOIN scoring_items si ON sir.scoring_item_id = si.id OR (sir.scoring_item_id IS NULL AND si.criteria_id IN (
+        SELECT id FROM scoring_criteria WHERE module_id = $1
+      ))
+      WHERE ec.event_id = $2
     `;
-    const params = [module_id];
+    const params = [module_id, eventId];
 
     // 裁判只能看到分配给自己的选手
     if (user.role === 'judge') {
-      query += ` AND sr.contestant_id IN (
+      query += ` AND u.id IN (
         SELECT contestant_id FROM judge_contestant_assignments 
         WHERE event_id = $2 AND judge_id = $3
       )`;
-      params.push(eventId, user.id);
+      params.push(user.id);
     }
 
-    query += ' GROUP BY sr.id, u.username, u.name ORDER BY u.name';
+    query += ' GROUP BY u.id, u.username, u.name, sr.id ORDER BY u.name';
 
     const result = await db.query(query, params);
     res.json(result.rows);
@@ -294,9 +318,25 @@ exports.updateJudgeScore = async (req, res) => {
     const { scoring_item_id, judge_score } = req.body;
     const { user } = req;
 
-    const eventId = await getEventIdByModuleId(module_id);
-    if (!eventId) {
+    // 检查模块状态
+    const moduleResult = await db.query(
+      'SELECT event_id, status FROM modules WHERE id = $1',
+      [module_id]
+    );
+
+    if (moduleResult.rows.length === 0) {
       return res.status(404).json({ error: 'Module not found' });
+    }
+
+    const { event_id: eventId, status: moduleStatus } = moduleResult.rows[0];
+
+    // 检查是否允许评分
+    if (moduleStatus === 'scoring_finished') {
+      return res.status(403).json({ error: 'Scoring has been finished and cannot be modified' });
+    }
+
+    if (moduleStatus !== 'scoring') {
+      return res.status(403).json({ error: 'Module is not in scoring status' });
     }
 
     // 检查权限（仅裁判和管理员可打分）

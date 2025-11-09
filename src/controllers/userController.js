@@ -4,12 +4,25 @@ const db = require('../config/database');
 exports.getAllUsers = async (req, res) => {
   try {
     const { role } = req.query;
+    const { user } = req;
+    
     let query = 'SELECT id, username, name, role, created_at FROM users';
     const params = [];
+    let paramCount = 1;
+
+    // 如果是裁判长，只能看到裁判和选手
+    if (user.role === 'chief_judge') {
+      query += ' WHERE role IN (\'judge\', \'contestant\')';
+    }
 
     if (role) {
-      query += ' WHERE role = $1';
+      if (user.role === 'chief_judge') {
+        query += ` AND role = $${paramCount}`;
+      } else {
+        query += ` WHERE role = $${paramCount}`;
+      }
       params.push(role);
+      paramCount++;
     }
 
     query += ' ORDER BY created_at DESC';

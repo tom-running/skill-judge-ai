@@ -21,7 +21,7 @@ app.use('/api/attachments', require('./routes/attachments'));
 app.use('/api/scoring', require('./routes/scoring'));
 
 // Serve frontend for any other route
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 

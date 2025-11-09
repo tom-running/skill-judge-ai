@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS modules (
   event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   duration_minutes INTEGER NOT NULL,
-  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'finished')),
+  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'finished', 'scoring', 'scoring_finished')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

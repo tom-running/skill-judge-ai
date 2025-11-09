@@ -320,3 +320,37 @@ exports.removeJudgeContestant = async (req, res) => {
     res.status(500).json({ error: 'Failed to remove judge-contestant assignment' });
   }
 };
+
+// 获取裁判-选手分配关系
+exports.getJudgeContestantAssignments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user } = req;
+
+    // 检查权限
+    const hasAccess = await hasEventAccess(user.id, id, user.role);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const result = await db.query(`
+      SELECT 
+        jca.judge_id,
+        jca.contestant_id,
+        j.name as judge_name,
+        j.username as judge_username,
+        c.name as contestant_name,
+        c.username as contestant_username
+      FROM judge_contestant_assignments jca
+      LEFT JOIN users j ON jca.judge_id = j.id
+      LEFT JOIN users c ON jca.contestant_id = c.id
+      WHERE jca.event_id = $1
+      ORDER BY j.name, c.name
+    `, [id]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get judge-contestant assignments error:', error);
+    res.status(500).json({ error: 'Failed to fetch judge-contestant assignments' });
+  }
+};
