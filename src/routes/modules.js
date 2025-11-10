@@ -11,4 +11,8 @@ router.delete('/:id', auth, requireRole('admin', 'chief_judge'), moduleControlle
 
 router.patch('/:id/status', auth, requireRole('admin', 'chief_judge'), moduleController.updateModuleStatus);
 
+// AI评分相关路由
+router.post('/:id/ai-evaluation', auth, requireRole('admin', 'chief_judge'), moduleController.triggerModuleAIEvaluation);
+router.post('/:moduleId/contestants/:contestantId/ai-evaluation', auth, requireRole('admin', 'chief_judge', 'judge'), moduleController.triggerContestantAIEvaluation);
+
 module.exports = router;

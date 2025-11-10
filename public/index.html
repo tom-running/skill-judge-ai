@@ -423,7 +423,7 @@
             open={modalVisible}
             onCancel={() => setModalVisible(false)}
             footer={null}
-            width={600}
+            width="80%"
           >
             <Form form={form} onFinish={handleSubmit} layout="vertical">
               <Form.Item label="赛事名称" name="name" rules={[{ required: true }]}>
@@ -1106,6 +1106,20 @@
         window.open(`/api/attachments/download?filepath=${encodeURIComponent(filepath)}`);
       };
 
+      // AI评分处理函数
+      const handleModuleAiEvaluation = async (moduleId) => {
+        try {
+          await axios.post(`/modules/${moduleId}/ai-evaluation`);
+          message.success('AI评分已启动');
+        } catch (error) {
+          if (error.response?.status === 409) {
+            message.warning('AI评分正在进行中，请勿重复操作');
+          } else {
+            message.error('启动AI评分失败：' + (error.response?.data?.error || '未知错误'));
+          }
+        }
+      };
+
       const columns = [
         { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
         { title: '模块名称', dataIndex: 'name', key: 'name' },
@@ -1158,6 +1172,16 @@
                   </Select>
                   <Button size="small" onClick={() => handleManageCriteria(record)}>评分标准</Button>
                   <Button size="small" onClick={() => handleManageAttachments(record)}>赛题/答题</Button>
+                  {['admin', 'chief_judge'].includes(user.role) && (
+                    <Button 
+                      size="small" 
+                      type="primary" 
+                      onClick={() => handleModuleAiEvaluation(record.id)}
+                      disabled={!['scoring', 'finished'].includes(record.status)}
+                    >
+                      AI评分
+                    </Button>
+                  )}
                   <Button size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
                 </>
               )}
@@ -1172,7 +1196,7 @@
               )}
             </Space>
           ),
-          width: 380
+          width: 460
         }
       ];
 
@@ -1789,6 +1813,20 @@
         }
       };
 
+      // 单个选手AI评分处理函数
+      const handleContestantAiEvaluation = async (moduleId, contestantId) => {
+        try {
+          await axios.post(`/modules/${moduleId}/contestants/${contestantId}/ai-evaluation`);
+          message.success('AI评分已启动');
+        } catch (error) {
+          if (error.response?.status === 409) {
+            message.warning('AI评分正在进行中，请勿重复操作');
+          } else {
+            message.error('启动AI评分失败：' + (error.response?.data?.error || '未知错误'));
+          }
+        }
+      };
+
       const statusConfig = {
         pending: { text: '未开始', color: 'default' },
         in_progress: { text: '进行中', color: 'processing' },
@@ -1869,16 +1907,27 @@
           {
             title: '操作',
             key: 'action',
-            width: 100,
+            width: ['admin', 'chief_judge'].includes(user.role) ? 180 : 100,
             render: (_, record) => (
-              <Button
-                type="primary"
-                size="small"
-                onClick={() => handleEditScoring(record, moduleRecord)}
-                disabled={moduleRecord.status === 'scoring_finished'}
-              >
-                评分
-              </Button>
+              <Space>
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={() => handleEditScoring(record, moduleRecord)}
+                  disabled={moduleRecord.status === 'scoring_finished'}
+                >
+                  评分
+                </Button>
+                {['admin', 'chief_judge'].includes(user.role) && (
+                  <Button
+                    size="small"
+                    onClick={() => handleContestantAiEvaluation(moduleRecord.id, record.contestant_id)}
+                    disabled={moduleRecord.status !== 'scoring'}
+                  >
+                    AI评分
+                  </Button>
+                )}
+              </Space>
             )
           }
         ];
@@ -1889,7 +1938,7 @@
             dataSource={contestants}
             pagination={false}
             size="small"
-            scroll={{ x: 800 }}
+            scroll={{ x: 900 }}
             rowKey="id"
           />
         );

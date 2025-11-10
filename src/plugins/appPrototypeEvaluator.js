@@ -11,6 +11,7 @@ async function appPrototypeEvaluator(scoringCriteria, problemAttachments, answer
   const results = [];
 
   for (const item of scoringCriteria.items) {
+    console.log(`Evaluating scoring item ${item.id}`);
     try {
       // 从评分项描述中提取图片编号
       const imageMatch = item.description.match(/(\d{2})\.jpeg/);
@@ -33,6 +34,7 @@ async function appPrototypeEvaluator(scoringCriteria, problemAttachments, answer
       );
 
       if (!attachment) {
+        console.log(`Attachment ${targetFilename} not found for scoring item ${item.id}`);
         results.push({
           scoring_item_id: item.id,
           ai_score: null,
@@ -61,6 +63,8 @@ ${item.description}
 
 请提供详细的评估建议和改进意见。`;
       }
+
+      console.log(`Calling AI model for scoring item ${item.id} with image ${targetFilename}, prompt: ${prompt}`);
 
       // 调用AI模型
       const response = await callVisionModel(imageUrl, prompt, item.evaluation_type === 'objective');

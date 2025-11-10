@@ -7,27 +7,33 @@ class AIEvaluatorRegistry {
   }
 
   register(moduleId, evaluatorFunction) {
-    this.evaluators.set(moduleId, evaluatorFunction);
-    console.log(`AI evaluator registered for module ID: ${moduleId}`);
+    // 确保 moduleId 始终为字符串类型
+    const normalizedModuleId = String(moduleId);
+    this.evaluators.set(normalizedModuleId, evaluatorFunction);
+    console.log(`AI evaluator registered for module ID: ${normalizedModuleId}`);
   }
 
   async evaluate(moduleId, scoringCriteria, problemAttachments, answerAttachments) {
-    const evaluator = this.evaluators.get(moduleId);
+    // 确保 moduleId 始终为字符串类型
+    const normalizedModuleId = String(moduleId);
+    const evaluator = this.evaluators.get(normalizedModuleId);
     if (!evaluator) {
-      console.log(`No AI evaluator found for module ID: ${moduleId}`);
+      console.log(`No AI evaluator found for module ID: ${normalizedModuleId}`);
       return null;
     }
 
     try {
       return await evaluator(scoringCriteria, problemAttachments, answerAttachments);
     } catch (error) {
-      console.error(`AI evaluation error for module ${moduleId}:`, error);
+      console.error(`AI evaluation error for module ${normalizedModuleId}:`, error);
       throw error;
     }
   }
 
   hasEvaluator(moduleId) {
-    return this.evaluators.has(moduleId);
+    // 确保 moduleId 始终为字符串类型
+    const normalizedModuleId = String(moduleId);
+    return this.evaluators.has(normalizedModuleId);
   }
 }
 
