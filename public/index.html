@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>世界职业技能大赛 AI 评分系统</title>
+  <title>世界技能大赛 AI 评分系统</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏆</text></svg>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/antd@5.11.5/dist/reset.css">
   <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
@@ -11,20 +12,360 @@
   <script src="https://cdn.jsdelivr.net/npm/antd@5.11.5/dist/antd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.5/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary-color: #1a73e8;
+      --primary-dark: #1557b0;
+      --primary-light: #4285f4;
+      --secondary-color: #00bfa5;
+      --success-color: #00c853;
+      --warning-color: #ff6d00;
+      --error-color: #dd2c00;
+      --background-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --tech-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      --surface-dark: #1a1d29;
+      --surface-light: #ffffff;
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --border-color: #e5e7eb;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
         'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     }
+    
     #root {
       min-height: 100vh;
     }
+
+    /* 全局卡片样式 */
+    .ant-card {
+      border-radius: 12px !important;
+      box-shadow: var(--shadow-md) !important;
+      border: 1px solid var(--border-color) !important;
+      transition: all 0.3s ease !important;
+    }
+    
+    .ant-card:hover {
+      box-shadow: var(--shadow-lg) !important;
+      transform: translateY(-2px);
+    }
+
+    /* border-bottom: 2px solid var(--primary-color) !important; */
+    .ant-card-head {
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+      font-weight: 600 !important;
+    }
+
+    /* 表格优化 */
+    .ant-table {
+      background: white;
+      border-radius: 8px !important;
+      overflow: hidden;
+    }
+    
+    .ant-table-thead > tr > th {
+      background: linear-gradient(to bottom, #f8fafc, #f1f5f9) !important;
+      color: var(--text-primary) !important;
+      font-weight: 600 !important;
+      border-bottom: 2px solid var(--primary-color) !important;
+      padding: 16px !important;
+    }
+    
+    .ant-table-tbody > tr:hover > td {
+      background: #f0f9ff !important;
+    }
+    
+    .ant-table-tbody > tr > td {
+      padding: 14px 16px !important;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    /* 按钮优化 */
+    .ant-btn-primary {
+      background: var(--primary-color) !important;
+      border: none !important;
+      box-shadow: 0 2px 4px rgba(26, 115, 232, 0.3) !important;
+      font-weight: 500 !important;
+      border-radius: 6px !important;
+      transition: all 0.3s ease !important;
+    }
+    
+    .ant-btn-primary:hover {
+      background: var(--primary-dark) !important;
+      box-shadow: 0 4px 8px rgba(26, 115, 232, 0.4) !important;
+      transform: translateY(-1px);
+    }
+
+    .ant-btn {
+      border-radius: 6px !important;
+      font-weight: 500 !important;
+    }
+
+    /* Modal 优化 */
+    .ant-modal-header {
+      background: var(--tech-gradient) !important;
+      border-radius: 8px 8px 0 0 !important;
+      padding: 20px 24px !important;
+      border-bottom: none !important;
+    }
+    
+    .ant-modal-title {
+      color: white !important;
+      font-weight: 600 !important;
+      font-size: 18px !important;
+    }
+    
+    .ant-modal-close {
+      color: white !important;
+    }
+    
+    .ant-modal-close:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+    }
+    
+    .ant-modal-content {
+      border-radius: 8px !important;
+      overflow: hidden;
+      box-shadow: var(--shadow-xl) !important;
+    }
+
+    /* Drawer 优化 */
+    .ant-drawer-header {
+      background: var(--tech-gradient) !important;
+      border-bottom: none !important;
+      padding: 24px !important;
+    }
+    
+    .ant-drawer-title {
+      color: white !important;
+      font-weight: 600 !important;
+      font-size: 18px !important;
+    }
+    
+    .ant-drawer-close {
+      color: white !important;
+    }
+
+    .ant-drawer-close:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+    }
+
+    /* Tag 优化  padding: 4px 12px !important; */
+    .ant-tag {
+      border-radius: 12px !important;
+      font-weight: 500 !important;
+      border: none !important;
+    }
+
+    /* Badge 优化 */
+    .ant-badge-status-text {
+      font-weight: 500 !important;
+    }
+
+    /* Layout Header 优化 */
+    .ant-layout-header {
+      background: var(--tech-gradient) !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+      padding: 0 24px !important;
+      height: 64px !important;
+      line-height: 64px !important;
+    }
+
+    /* Sider 优化 */
+    .ant-layout-sider {
+      background: var(--surface-light) !important;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    /* Menu 优化 */
+    .ant-menu-item-selected {
+      background: linear-gradient(135deg, rgba(26, 115, 232, 0.15), rgba(26, 115, 232, 0.05)) !important;
+      border-radius: 8px !important;
+      color: var(--primary-color) !important;
+      font-weight: 600 !important;
+    }
+    
+    .ant-menu-item:hover {
+      background: rgba(26, 115, 232, 0.08) !important;
+      border-radius: 8px !important;
+      color: var(--primary-color) !important;
+    }
+
+    .ant-menu-item {
+      margin: 4px !important;
+      padding: 4px 0 !important;
+      height: auto !important;
+      line-height: normal !important;
+      border-radius: 8px !important;
+    }
+
+    .ant-menu-inline {
+      border-right: none !important;
+    }
+
+    /* Form 优化 */
+    .ant-form-item-label > label {
+      font-weight: 500 !important;
+      color: var(--text-primary) !important;
+    }
+    
+    .ant-input, .ant-input-number, .ant-select-selector, .ant-picker {
+      border-radius: 6px !important;
+      border: 1px solid var(--border-color) !important;
+      transition: all 0.3s ease !important;
+    }
+    
+    .ant-input:focus, .ant-input-number-focused .ant-input-number-input, 
+    .ant-select-focused .ant-select-selector, .ant-picker-focused {
+      border-color: var(--primary-color) !important;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1) !important;
+    }
+
+    /* 登录页面输入框样式 */
+    .login-page-form .ant-input,
+    .login-page-form .ant-input-password {
+      border: none !important;
+      background: #f5f5f5 !important;
+    }
+    
+    .login-page-form .ant-input:focus,
+    .login-page-form .ant-input-password .ant-input:focus {
+      background: #fff !important;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1) !important;
+    }
+
+    /* 状态颜色 */
     .status-pending { color: #8c8c8c; }
     .status-in_progress { color: #1890ff; }
     .status-finished { color: #52c41a; }
     .status-scoring { color: #fa8c16; }
     .status-scoring_finished { color: #722ed1; }
+
+    /* 竞赛系统特色样式 */
+    .tech-header {
+      background: var(--tech-gradient);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .score-display {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* 数据可视化优化 */
+    .data-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow-md);
+      border-left: 4px solid var(--primary-color);
+      transition: all 0.3s ease;
+    }
+    
+    .data-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateX(4px);
+    }
+
+    /* 滚动条优化 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-dark);
+    }
+
+    /* Tabs 优化 */
+    .ant-tabs-tab {
+      font-weight: 500 !important;
+      padding: 12px 0 !important;
+    }
+
+    .ant-tabs-tab-active .ant-tabs-tab-btn {
+      color: var(--primary-color) !important;
+      font-weight: 600 !important;
+    }
+
+    .ant-tabs-ink-bar {
+      background: var(--primary-color) !important;
+      height: 3px !important;
+    }
+
+    /* Descriptions 优化 */
+    .ant-descriptions-item-label {
+      font-weight: 600 !important;
+      color: var(--text-primary) !important;
+    }
+
+    /* Select 优化 */
+    .ant-select-dropdown {
+      border-radius: 8px !important;
+      box-shadow: var(--shadow-lg) !important;
+    }
+
+    /* Upload 优化 */
+    .ant-upload-list-item {
+      border-radius: 6px !important;
+    }
+
+    /* Divider 优化 */
+    .ant-divider {
+      border-color: var(--border-color) !important;
+    }
+
+    /* Space 优化 */
+    .ant-space-item {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    /* Popconfirm 优化 */
+    .ant-popover-inner {
+      border-radius: 8px !important;
+      box-shadow: var(--shadow-lg) !important;
+    }
   </style>
 </head>
 <body>
@@ -86,31 +427,116 @@
           justifyContent: 'center',
           alignItems: 'center',
           minHeight: '100vh',
-          background: '#f0f2f5'
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
-          <Card title="世界职业技能大赛 AI 评分系统" style={{ width: 400 }}>
-            <Form onFinish={onFinish} layout="vertical">
+          {/* 背景装饰 */}
+          <div style={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            opacity: 0.1,
+            background: `
+              radial-gradient(circle at 20% 50%, white 1px, transparent 1px),
+              radial-gradient(circle at 80% 80%, white 1px, transparent 1px)
+            `,
+            backgroundSize: '50px 50px'
+          }}></div>
+
+          <Card 
+            style={{ 
+              width: 450,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '48px' }}
+          >
+            {/* Logo & Title */}
+            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                margin: '0 auto 24px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 16px rgba(102, 126, 234, 0.4)'
+              }}>
+                <span style={{ fontSize: '36px', color: 'white' }}>🏆</span>
+              </div>
+              <Title level={2} style={{ 
+                margin: '0 0 8px 0',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontWeight: 700
+              }}>
+                世界技能大赛
+              </Title>
+              <Text type="secondary" style={{ fontSize: '16px', fontWeight: 500 }}>
+                AI 智能评分系统
+              </Text>
+            </div>
+
+            <Form onFinish={onFinish} layout="vertical" size="large" className="login-page-form">
               <Form.Item
                 label="用户名"
                 name="username"
                 rules={[{ required: true, message: '请输入用户名' }]}
               >
-                <Input />
+                <Input 
+                  prefix={<span style={{ marginRight: 8 }}>👤</span>}
+                  placeholder="请输入用户名" 
+                  style={{ height: '48px' }}
+                />
               </Form.Item>
               <Form.Item
                 label="密码"
                 name="password"
                 rules={[{ required: true, message: '请输入密码' }]}
               >
-                <Input.Password />
+                <Input.Password 
+                  prefix={<span style={{ marginRight: 8 }}>🔒</span>}
+                  placeholder="请输入密码" 
+                  style={{ height: '48px' }}
+                />
               </Form.Item>
-              <Form.Item>
-                <Button type="primary" htmlType="submit" loading={loading} block>
-                  登录
+              <Form.Item style={{ marginBottom: 0 }}>
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
+                  loading={loading} 
+                  block
+                  style={{ 
+                    height: '48px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    marginTop: '16px'
+                  }}
+                >
+                  登录系统
                 </Button>
               </Form.Item>
             </Form>
-            <Text type="secondary">默认管理员: admin / admin123</Text>
+
+            {/* 底部提示 */}
+            <div style={{ 
+              marginTop: '32px', 
+              textAlign: 'center',
+              padding: '16px',
+              background: '#f8fafc',
+              borderRadius: '8px'
+            }}>
+              <Text type="secondary" style={{ fontSize: '13px' }}>
+                🔐 默认管理员: admin / admin123
+              </Text>
+            </div>
           </Card>
         </div>
       );
@@ -211,20 +637,51 @@
 
       return (
         <div>
-          <div style={{ marginBottom: 16 }}>
-            <Button type="primary" onClick={handleAdd}>添加用户</Button>
+          {/* 页面标题 */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <Title level={3} style={{ color: 'white', margin: 0 }}>
+                👥 用户管理
+              </Title>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+                管理系统用户账号和权限
+              </Text>
+            </div>
+            <Button 
+              onClick={handleAdd}
+              size="large"
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                color: 'white',
+                fontWeight: 500
+              }}
+            >
+              ➕ 添加用户
+            </Button>
           </div>
+
           <Table
             loading={loading}
             dataSource={users}
             columns={columns}
             rowKey="id"
           />
-          <Modal
+          <Drawer
             title={editingUser ? '编辑用户' : '添加用户'}
             open={modalVisible}
-            onCancel={() => setModalVisible(false)}
-            footer={null}
+            onClose={() => setModalVisible(false)}
+            width={480}
           >
             <Form form={form} onFinish={handleSubmit} layout="vertical">
               {!editingUser && (
@@ -276,7 +733,7 @@
                 </Space>
               </Form.Item>
             </Form>
-          </Modal>
+          </Drawer>
         </div>
       );
     }
@@ -407,23 +864,53 @@
 
       return (
         <div>
-          <div style={{ marginBottom: 16 }}>
+          {/* 页面标题 */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <Title level={3} style={{ color: 'white', margin: 0 }}>
+                🏆 赛事管理
+              </Title>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+                管理世界技能大赛的各项赛事信息
+              </Text>
+            </div>
             {user.role === 'admin' && (
-              <Button type="primary" onClick={handleAdd}>添加赛事</Button>
+              <Button 
+                onClick={handleAdd}
+                size="large"
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  color: 'white',
+                  fontWeight: 500
+                }}
+              >
+                ➕ 添加赛事
+              </Button>
             )}
           </div>
+
           <Table
             loading={loading}
             dataSource={competitions}
             columns={columns}
             rowKey="id"
           />
-          <Modal
+          <Drawer
             title={editingItem ? '编辑赛事' : '添加赛事'}
             open={modalVisible}
-            onCancel={() => setModalVisible(false)}
-            footer={null}
-            width="80%"
+            onClose={() => setModalVisible(false)}
+            width={600}
           >
             <Form form={form} onFinish={handleSubmit} layout="vertical">
               <Form.Item label="赛事名称" name="name" rules={[{ required: true }]}>
@@ -442,7 +929,7 @@
                 </Space>
               </Form.Item>
             </Form>
-          </Modal>
+          </Drawer>
         </div>
       );
     }
@@ -626,22 +1113,56 @@
         {
           title: '操作',
           key: 'action',
-          render: (_, record) => (
-            <Space wrap>
-              <Button size="small" onClick={() => handleViewDetail(record)}>查看详情</Button>
-              {user.role === 'admin' && (
-                <>
-                  <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>
-                  <Button size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
-                  <Button size="small" onClick={() => handleAssign(record, 'chief_judge')}>分配裁判长</Button>
-                  <Button size="small" onClick={() => handleAssign(record, 'judge')}>分配裁判</Button>
-                  <Button size="small" onClick={() => handleAssign(record, 'contestant')}>分配选手</Button>
-                  <Button size="small" onClick={() => handleAssign(record, 'judge_contestant')}>分配裁判-选手</Button>
-                </>
-              )}
-            </Space>
-          ),
-          width: 550
+          render: (_, record) => {
+            const { Dropdown } = antd;
+            
+            if (user.role === 'admin') {
+              const menuItems = [
+                {
+                  key: 'edit',
+                  label: '编辑',
+                  onClick: () => handleEdit(record)
+                },
+                {
+                  key: 'assign_chief_judge',
+                  label: '分配裁判长',
+                  onClick: () => handleAssign(record, 'chief_judge')
+                },
+                {
+                  key: 'assign_judge',
+                  label: '分配裁判',
+                  onClick: () => handleAssign(record, 'judge')
+                },
+                {
+                  key: 'assign_contestant',
+                  label: '分配选手',
+                  onClick: () => handleAssign(record, 'contestant')
+                },
+                {
+                  key: 'assign_judge_contestant',
+                  label: '分配裁判-选手',
+                  onClick: () => handleAssign(record, 'judge_contestant')
+                },
+                {
+                  key: 'delete',
+                  label: '删除',
+                  danger: true,
+                  onClick: () => handleDelete(record.id)
+                }
+              ];
+              
+              return (
+                <Space size="small">
+                  <Button size="small" onClick={() => handleViewDetail(record)}>查看详情</Button>
+                  <Dropdown menu={{ items: menuItems }} placement="bottomRight">
+                    <Button size="small">更多 ▼</Button>
+                  </Dropdown>
+                </Space>
+              );
+            }
+            
+            return <Button size="small" onClick={() => handleViewDetail(record)}>查看详情</Button>;
+          }
         }
       ];
 
@@ -658,22 +1179,52 @@
 
       return (
         <div>
-          <div style={{ marginBottom: 16 }}>
+          {/* 页面标题 */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <Title level={3} style={{ color: 'white', margin: 0 }}>
+                📋 赛项管理
+              </Title>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+                管理赛事的具体竞赛项目和人员分配
+              </Text>
+            </div>
             {user.role === 'admin' && (
-              <Button type="primary" onClick={handleAdd}>添加赛项</Button>
+              <Button 
+                onClick={handleAdd}
+                size="large"
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  color: 'white',
+                  fontWeight: 500
+                }}
+              >
+                ➕ 添加赛项
+              </Button>
             )}
           </div>
+
           <Table
             loading={loading}
             dataSource={events}
             columns={columns}
             rowKey="id"
           />
-          <Modal
+          <Drawer
             title={editingItem ? '编辑赛项' : '添加赛项'}
             open={modalVisible}
-            onCancel={() => setModalVisible(false)}
-            footer={null}
+            onClose={() => setModalVisible(false)}
             width={600}
           >
             <Form form={form} onFinish={handleSubmit} layout="vertical">
@@ -700,12 +1251,12 @@
                 </Space>
               </Form.Item>
             </Form>
-          </Modal>
-          <Modal
+          </Drawer>
+          <Drawer
             title={`分配${assignType === 'chief_judge' ? '裁判长' : assignType === 'judge' ? '裁判' : assignType === 'contestant' ? '选手' : '裁判-选手'}`}
             open={assignModalVisible}
-            onCancel={() => setAssignModalVisible(false)}
-            footer={null}
+            onClose={() => setAssignModalVisible(false)}
+            width={500}
           >
             <Form form={assignForm} onFinish={handleAssignSubmit} layout="vertical">
               {assignType === 'judge_contestant' ? (
@@ -741,13 +1292,12 @@
                 </Space>
               </Form.Item>
             </Form>
-          </Modal>
-          <Modal
+          </Drawer>
+          <Drawer
             title={`赛项详情 - ${eventDetail?.name}`}
             open={detailModalVisible}
-            onCancel={() => setDetailModalVisible(false)}
-            footer={null}
-            width={1000}
+            onClose={() => setDetailModalVisible(false)}
+            width="80%"
           >
             {eventDetail && (
               <div>
@@ -882,7 +1432,7 @@
                 </Tabs>
               </div>
             )}
-          </Modal>
+          </Drawer>
         </div>
       );
     }
@@ -1107,17 +1657,30 @@
       };
 
       // AI评分处理函数
-      const handleModuleAiEvaluation = async (moduleId) => {
-        try {
-          await axios.post(`/modules/${moduleId}/ai-evaluation`);
-          message.success('AI评分已启动');
-        } catch (error) {
-          if (error.response?.status === 409) {
-            message.warning('AI评分正在进行中，请勿重复操作');
-          } else {
-            message.error('启动AI评分失败：' + (error.response?.data?.error || '未知错误'));
+      const handleModuleAiEvaluation = (moduleId) => {
+        Modal.confirm({
+          title: '确认启动AI评分',
+          content: (
+            <div>
+              <p>⚠️ AI评分需要处理较长时间，请勿重复操作。</p>
+              <p>确定要对此模块的所有选手启动AI评分吗？</p>
+            </div>
+          ),
+          okText: '确认启动',
+          cancelText: '取消',
+          onOk: async () => {
+            try {
+              await axios.post(`/modules/${moduleId}/ai-evaluation`);
+              message.success('AI评分已启动，请耐心等待');
+            } catch (error) {
+              if (error.response?.status === 409) {
+                message.warning('AI评分正在进行中，请勿重复操作');
+              } else {
+                message.error('启动AI评分失败：' + (error.response?.data?.error || '未知错误'));
+              }
+            }
           }
-        }
+        });
       };
 
       const columns = [
@@ -1132,12 +1695,14 @@
         {
           title: '时长(分钟)',
           dataIndex: 'duration_minutes',
-          key: 'duration_minutes'
+          key: 'duration_minutes',
+          width: 110
         },
         {
           title: '状态',
           dataIndex: 'status',
           key: 'status',
+          width: 100,
           render: (status) => {
             const statusMap = {
               pending: { text: '未开始', color: 'default' },
@@ -1153,16 +1718,38 @@
         {
           title: '操作',
           key: 'action',
-          render: (_, record) => (
-            <Space wrap>
-              {['admin', 'chief_judge'].includes(user.role) && (
-                <>
-                  <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>
+          width: 500,
+          render: (_, record) => {
+            const { Dropdown } = antd;
+            
+            if (['admin', 'chief_judge'].includes(user.role)) {
+              const menuItems = [
+                {
+                  key: 'edit',
+                  label: '编辑',
+                  onClick: () => handleEdit(record)
+                },
+                {
+                  key: 'ai',
+                  label: 'AI评分',
+                  onClick: () => handleModuleAiEvaluation(record.id),
+                  disabled: !['scoring', 'finished'].includes(record.status)
+                },
+                {
+                  key: 'delete',
+                  label: '删除',
+                  danger: true,
+                  onClick: () => handleDelete(record.id)
+                }
+              ];
+              
+              return (
+                <Space size="small">
                   <Select
                     size="small"
                     value={record.status}
                     onChange={(val) => handleStatusChange(record.id, val)}
-                    style={{ width: 100 }}
+                    style={{ width: 95 }}
                   >
                     <Option value="pending">未开始</Option>
                     <Option value="in_progress">进行中</Option>
@@ -1171,53 +1758,76 @@
                     <Option value="scoring_finished">评分结束</Option>
                   </Select>
                   <Button size="small" onClick={() => handleManageCriteria(record)}>评分标准</Button>
-                  <Button size="small" onClick={() => handleManageAttachments(record)}>赛题/答题</Button>
-                  {['admin', 'chief_judge'].includes(user.role) && (
-                    <Button 
-                      size="small" 
-                      type="primary" 
-                      onClick={() => handleModuleAiEvaluation(record.id)}
-                      disabled={!['scoring', 'finished'].includes(record.status)}
-                    >
-                      AI评分
-                    </Button>
-                  )}
-                  <Button size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
-                </>
-              )}
-              {['judge', 'contestant'].includes(user.role) && (
-                <Button 
-                  size="small" 
-                  onClick={() => handleManageAttachments(record)}
-                  disabled={user.role === 'contestant' && record.status === 'pending'}
-                >
-                  {user.role === 'contestant' ? '查看赛题/答题' : '查看赛题/答题'}
-                </Button>
-              )}
-            </Space>
-          ),
-          width: 460
+                  <Button size="small" onClick={() => handleManageAttachments(record)}>赛题</Button>
+                  <Dropdown menu={{ items: menuItems }} placement="bottomRight">
+                    <Button size="small">更多 ▼</Button>
+                  </Dropdown>
+                </Space>
+              );
+            }
+            
+            return (
+              <Button 
+                size="small" 
+                onClick={() => handleManageAttachments(record)}
+                disabled={user.role === 'contestant' && record.status === 'pending'}
+              >
+                查看赛题/答题
+              </Button>
+            );
+          }
         }
       ];
 
       return (
         <div>
-          <div style={{ marginBottom: 16 }}>
+          {/* 页面标题 */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <Title level={3} style={{ color: 'white', margin: 0 }}>
+                📦 模块管理
+              </Title>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+                管理赛项的考核模块、评分标准和赛题资料
+              </Text>
+            </div>
             {['admin', 'chief_judge'].includes(user.role) && (
-              <Button type="primary" onClick={handleAdd}>添加模块</Button>
+              <Button 
+                onClick={handleAdd}
+                size="large"
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  color: 'white',
+                  fontWeight: 500
+                }}
+              >
+                ➕ 添加模块
+              </Button>
             )}
           </div>
+
           <Table
             loading={loading}
             dataSource={modules}
             columns={columns}
             rowKey="id"
           />
-          <Modal
+          <Drawer
             title={editingItem ? '编辑模块' : '添加模块'}
             open={modalVisible}
-            onCancel={() => setModalVisible(false)}
-            footer={null}
+            onClose={() => setModalVisible(false)}
+            width={600}
           >
             <Form form={form} onFinish={handleSubmit} layout="vertical">
               <Form.Item label="赛项" name="event_id" rules={[{ required: true }]}>
@@ -1240,13 +1850,12 @@
                 </Space>
               </Form.Item>
             </Form>
-          </Modal>
-          <Modal
+          </Drawer>
+          <Drawer
             title={`评分标准管理 - ${selectedModule?.name}`}
             open={criteriaModalVisible}
-            onCancel={() => setCriteriaModalVisible(false)}
-            footer={null}
-            width={800}
+            onClose={() => setCriteriaModalVisible(false)}
+            width="80%"
           >
             {!scoringCriteria ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
@@ -1319,13 +1928,12 @@
                 </Form>
               </div>
             )}
-          </Modal>
-          <Modal
+          </Drawer>
+          <Drawer
             title={`附件管理 - ${selectedModule?.name}`}
             open={attachmentModalVisible}
-            onCancel={() => setAttachmentModalVisible(false)}
-            footer={null}
-            width={900}
+            onClose={() => setAttachmentModalVisible(false)}
+            width="80%"
           >
             <Tabs defaultActiveKey="problem">
               <Tabs.TabPane tab="赛题附件" key="problem">
@@ -1440,7 +2048,7 @@
                 </Tabs.TabPane>
               )}
             </Tabs>
-          </Modal>
+          </Drawer>
         </div>
       );
     }
@@ -1814,17 +2422,30 @@
       };
 
       // 单个选手AI评分处理函数
-      const handleContestantAiEvaluation = async (moduleId, contestantId) => {
-        try {
-          await axios.post(`/modules/${moduleId}/contestants/${contestantId}/ai-evaluation`);
-          message.success('AI评分已启动');
-        } catch (error) {
-          if (error.response?.status === 409) {
-            message.warning('AI评分正在进行中，请勿重复操作');
-          } else {
-            message.error('启动AI评分失败：' + (error.response?.data?.error || '未知错误'));
+      const handleContestantAiEvaluation = (moduleId, contestantId) => {
+        Modal.confirm({
+          title: '确认启动AI评分',
+          content: (
+            <div>
+              <p>⚠️ AI评分需要处理较长时间，请勿重复操作。</p>
+              <p>确定要对此选手启动AI评分吗？</p>
+            </div>
+          ),
+          okText: '确认启动',
+          cancelText: '取消',
+          onOk: async () => {
+            try {
+              await axios.post(`/modules/${moduleId}/contestants/${contestantId}/ai-evaluation`);
+              message.success('AI评分已启动，请耐心等待');
+            } catch (error) {
+              if (error.response?.status === 409) {
+                message.warning('AI评分正在进行中，请勿重复操作');
+              } else {
+                message.error('启动AI评分失败：' + (error.response?.data?.error || '未知错误'));
+              }
+            }
           }
-        }
+        });
       };
 
       const statusConfig = {
@@ -1869,39 +2490,44 @@
             title: '答题文件',
             key: 'attachments',
             width: 200,
-            render: (_, record) => (
-              <div>
-                {record.answerAttachments?.map(attachment => (
-                  <div key={attachment.id} style={{ marginBottom: 4 }}>
-                    <Button 
-                      type="link" 
-                      size="small"
-                      onClick={() => window.open(`/attachments/download?filepath=${encodeURIComponent(attachment.filepath)}`, '_blank')}
-                    >
-                      {attachment.filename}
-                    </Button>
-                  </div>
-                ))}
-                {(!record.answerAttachments || record.answerAttachments.length === 0) && (
-                  <Text type="secondary">未上传</Text>
-                )}
-              </div>
-            )
+            ellipsis: {
+              showTitle: false,
+            },
+            render: (_, record) => {
+              const filenames = record.answerAttachments?.map(a => a.filename).join(', ') || '未上传';
+              return (
+                <span 
+                  title={filenames}
+                  style={{ cursor: record.answerAttachments?.length ? 'pointer' : 'default' }}
+                  onClick={() => {
+                    if (record.answerAttachments?.length > 0) {
+                      window.open(`/attachments/download?filepath=${encodeURIComponent(record.answerAttachments[0].filepath)}`, '_blank');
+                    }
+                  }}
+                >
+                  {filenames}
+                </span>
+              );
+            }
           },
           {
-            title: '总分',
-            key: 'total_score',
-            width: 120,
+            title: 'AI评分',
+            key: 'ai_score',
+            width: 90,
+            render: (_, record) => {
+              const items = record.item_results.filter(item => item.id || item.scoring_item_id);
+              const aiTotal = items.reduce((sum, item) => sum + (parseFloat(item.ai_score) || 0), 0);
+              return <Text strong style={{ color: '#52c41a' }}>{aiTotal.toFixed(1)}</Text>;
+            }
+          },
+          {
+            title: '裁判评分',
+            key: 'judge_score',
+            width: 90,
             render: (_, record) => {
               const items = record.item_results.filter(item => item.id || item.scoring_item_id);
               const judgeTotal = items.reduce((sum, item) => sum + (parseFloat(item.judge_score) || 0), 0);
-              const aiTotal = items.reduce((sum, item) => sum + (parseFloat(item.ai_score) || 0), 0);
-              return (
-                <div>
-                  <div>裁判: {judgeTotal.toFixed(1)}</div>
-                  <div>AI: {aiTotal.toFixed(1)}</div>
-                </div>
-              );
+              return <Text strong style={{ color: '#1890ff' }}>{judgeTotal.toFixed(1)}</Text>;
             }
           },
           {
@@ -1916,7 +2542,7 @@
                   onClick={() => handleEditScoring(record, moduleRecord)}
                   disabled={moduleRecord.status === 'scoring_finished'}
                 >
-                  评分
+                  裁判评分
                 </Button>
                 {['admin', 'chief_judge'].includes(user.role) && (
                   <Button
@@ -1946,10 +2572,33 @@
 
       return (
         <div>
-          <div style={{ marginBottom: 16 }}>
-            <Text strong>评分管理</Text>
-            <Text type="secondary" style={{ marginLeft: 16 }}>
-              展开模块行查看选手答题和评分
+          {/* 页面标题 */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}>
+            <Title level={3} style={{ color: 'white', margin: 0 }}>
+              ✍️ 评分管理
+            </Title>
+            <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+              查看选手答题并进行人工评分和AI辅助评分
+            </Text>
+          </div>
+
+          <div style={{ 
+            marginBottom: 16,
+            padding: '16px',
+            background: '#e8f4fd',
+            borderRadius: '8px',
+            border: '1px solid #91d5ff'
+          }}>
+            <Text strong style={{ color: '#0958d9' }}>💡 使用提示：</Text>
+            <Text style={{ color: '#0958d9', marginLeft: '8px' }}>
+              点击模块名称展开查看该模块下的选手列表，然后可以查看答题和进行评分
             </Text>
           </div>
           
@@ -2035,31 +2684,7 @@
                   {/* 总分汇总 - 只在有评分记录时显示 */}
                   {selectedContestant.item_results.filter(item => item.id || item.scoring_item_id).length > 0 && (
                     <>
-                      <Card size="small" style={{ backgroundColor: '#f0f2f5' }}>
-                        <Row gutter={16}>
-                          <Col span={12}>
-                            <Text strong>裁判总分: </Text>
-                            <Text style={{ fontSize: '18px', color: '#1890ff' }}>
-                              {selectedContestant.item_results
-                                .filter(item => item.id || item.scoring_item_id)
-                                .reduce((sum, item) => sum + (parseFloat(item.judge_score) || 0), 0)
-                                .toFixed(1)}
-                            </Text>
-                          </Col>
-                          <Col span={12}>
-                            <Text strong>AI总分: </Text>
-                            <Text style={{ fontSize: '18px', color: '#52c41a' }}>
-                              {selectedContestant.item_results
-                                .filter(item => item.id || item.scoring_item_id)
-                                .reduce((sum, item) => sum + (parseFloat(item.ai_score) || 0), 0)
-                                .toFixed(1)}
-                            </Text>
-                          </Col>
-                        </Row>
-                      </Card>
 
-                      {/* 详细评分明细 */}
-                      <Card title="评分明细表" size="small" style={{ marginTop: 16 }}>
                         <Table
                           dataSource={selectedContestant.item_results.filter(item => item.id || item.scoring_item_id)}
                           columns={[
@@ -2186,7 +2811,6 @@
                       rowKey={(record) => record.id || record.scoring_item_id || Math.random()}
                       scroll={{ x: 1000 }}
                     />
-                      </Card>
                     </>
                   )}
                 </Card>
@@ -2293,30 +2917,91 @@
 
       if (!currentModule) {
         return (
-          <Layout style={{ minHeight: '100vh' }}>
-            <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
-                世界职业技能大赛 AI 评分系统
+          <Layout style={{ 
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+          }}>
+            <Header style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              padding: '0 24px',
+              height: '64px',
+              lineHeight: '64px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <span style={{ fontSize: '18px' }}>🏆</span>
+                </div>
+                <div style={{ color: 'white', fontSize: '16px', fontWeight: 'bold' }}>
+                  世界技能大赛 - 选手端
+                </div>
               </div>
-              <div style={{ color: 'white' }}>
-                <Space>
-                  <span>{user.name} (选手)</span>
-                  <Button type="link" onClick={onLogout} style={{ color: 'white' }}>
-                    退出
-                  </Button>
-                </Space>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  padding: '6px 12px',
+                  borderRadius: '16px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ fontSize: '14px', color: 'white' }}>👤 {user.name}</span>
+                </div>
+                <Button 
+                  type="link" 
+                  onClick={onLogout} 
+                  style={{ 
+                    color: 'white',
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    height: '32px',
+                    fontSize: '13px'
+                  }}
+                >
+                  🚪 退出
+                </Button>
               </div>
             </Header>
             <Content style={{ 
               display: 'flex', 
               justifyContent: 'center', 
               alignItems: 'center', 
-              minHeight: 'calc(100vh - 64px)' 
+              minHeight: 'calc(100vh - 64px)',
+              padding: '24px'
             }}>
-              <Card style={{ width: 400, textAlign: 'center' }}>
+              <Card style={{ 
+                width: 500, 
+                textAlign: 'center',
+                borderRadius: '16px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)'
+              }}>
+                <div style={{ fontSize: '64px', marginBottom: '24px' }}>⏳</div>
                 <Title level={3}>暂无进行中的模块</Title>
-                <p>请等待比赛开始</p>
-                <Button onClick={loadInProgressModule}>刷新</Button>
+                <Text type="secondary" style={{ fontSize: '16px' }}>
+                  比赛尚未开始，请耐心等待
+                </Text>
+                <div style={{ marginTop: '32px' }}>
+                  <Button 
+                    type="primary" 
+                    size="large" 
+                    onClick={loadInProgressModule}
+                    icon={<span style={{ marginRight: '8px' }}>🔄</span>}
+                  >
+                    刷新状态
+                  </Button>
+                </div>
               </Card>
             </Content>
           </Layout>
@@ -2324,27 +3009,104 @@
       }
 
       return (
-        <Layout style={{ minHeight: '100vh' }}>
-          <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
-              {currentModule.name} - 比赛进行中
+        <Layout style={{ 
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+        }}>
+          <Header style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            padding: '0 24px',
+            height: '64px',
+            lineHeight: '64px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                background: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <span style={{ fontSize: '18px' }}>🏆</span>
+              </div>
+              <div style={{ lineHeight: '1.4' }}>
+                <div style={{ color: 'white', fontSize: '16px', fontWeight: 'bold' }}>
+                  {currentModule.name}
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px' }}>
+                  比赛进行中 · 时长: {currentModule.duration_minutes} 分钟
+                </div>
+              </div>
             </div>
-            <div style={{ color: 'white' }}>
-              <Space>
-                <span>{user.name} (选手)</span>
-                <Button type="link" onClick={onLogout} style={{ color: 'white' }}>
-                  退出
-                </Button>
-              </Space>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                padding: '6px 12px',
+                borderRadius: '16px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '14px', color: 'white' }}>👤 {user.name}</span>
+              </div>
+              <Button 
+                type="link" 
+                onClick={onLogout} 
+                style={{ 
+                  color: 'white',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  height: '32px',
+                  fontSize: '13px'
+                }}
+              >
+                🚪 退出
+              </Button>
             </div>
           </Header>
           <Content style={{ padding: '24px' }}>
+            {/* 提示信息 */}
+            <div style={{
+              marginBottom: '24px',
+              padding: '16px 24px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '12px',
+              color: 'white',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }}>
+              <Text style={{ color: 'white', fontSize: '16px', fontWeight: 500 }}>
+                📝 请下载赛题附件，完成答题后上传您的作品文件
+              </Text>
+            </div>
+
             <Row gutter={24}>
               <Col span={12}>
-                <Card title="赛题附件" style={{ height: '100%' }}>
+                <Card 
+                  title={<span style={{ fontSize: '16px', fontWeight: 600 }}>📄 赛题附件</span>}
+                  style={{ 
+                    height: '100%',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}
+                  headStyle={{
+                    background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)'
+                  }}
+                >
                   {problemAttachments.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                      暂无赛题文件
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '60px 40px',
+                      color: '#999'
+                    }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📭</div>
+                      <Text type="secondary">暂无赛题文件</Text>
                     </div>
                   ) : (
                     <Table
@@ -2378,7 +3140,17 @@
                 </Card>
               </Col>
               <Col span={12}>
-                <Card title="我的答题" style={{ height: '100%' }}>
+                <Card 
+                  title={<span style={{ fontSize: '16px', fontWeight: 600 }}>✍️ 我的答题</span>}
+                  style={{ 
+                    height: '100%',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}
+                  headStyle={{
+                    background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)'
+                  }}
+                >
                   <div style={{ marginBottom: 16 }}>
                     <Upload
                       name="file"
@@ -2389,12 +3161,24 @@
                       onChange={handleUploadAnswer}
                       multiple
                     >
-                      <Button type="primary" style={{ width: '100%' }}>上传答题文件</Button>
+                      <Button 
+                        type="primary" 
+                        size="large"
+                        block
+                        icon={<span style={{ marginRight: '8px' }}>📤</span>}
+                      >
+                        上传答题文件
+                      </Button>
                     </Upload>
                   </div>
                   {answerAttachments.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                      暂未上传答题文件
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '60px 40px',
+                      color: '#999'
+                    }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📂</div>
+                      <Text type="secondary">暂未上传答题文件</Text>
                     </div>
                   ) : (
                     <Table
@@ -2446,6 +3230,17 @@
       const [user, setUser] = useState(null);
       const [selectedMenu, setSelectedMenu] = useState('competitions');
 
+      // 从URL hash获取路由
+      const getRouteFromHash = () => {
+        const hash = window.location.hash.slice(1); // 移除 # 号
+        return hash || null;
+      };
+
+      // 设置URL hash
+      const setRouteHash = (route) => {
+        window.location.hash = route;
+      };
+
       useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
@@ -2453,9 +3248,16 @@
             .then(response => {
               const userData = response.data.user;
               setUser(userData);
-              // 根据用户角色设置默认菜单
-              if (userData.role === 'judge') {
-                setSelectedMenu('scoring');
+              
+              // 从URL hash获取初始路由
+              const hashRoute = getRouteFromHash();
+              if (hashRoute && ['competitions', 'events', 'modules', 'scoring', 'users'].includes(hashRoute)) {
+                setSelectedMenu(hashRoute);
+              } else {
+                // 根据用户角色设置默认菜单
+                const defaultMenu = userData.role === 'judge' ? 'scoring' : 'competitions';
+                setSelectedMenu(defaultMenu);
+                setRouteHash(defaultMenu);
               }
             })
             .catch(() => {
@@ -2463,6 +3265,19 @@
               setAuthToken(null);
             });
         }
+      }, []);
+
+      // 监听浏览器前进后退
+      useEffect(() => {
+        const handleHashChange = () => {
+          const route = getRouteFromHash();
+          if (route && ['competitions', 'events', 'modules', 'scoring', 'users'].includes(route)) {
+            setSelectedMenu(route);
+          }
+        };
+
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
       }, []);
 
       const handleLogout = () => {
@@ -2480,11 +3295,56 @@
       }
 
       const menuItems = [
-        { key: 'competitions', label: '赛事管理', roles: ['admin', 'chief_judge'] },
-        { key: 'events', label: '赛项管理', roles: ['admin', 'chief_judge'] },
-        { key: 'modules', label: '模块管理', roles: ['admin', 'chief_judge'] },
-        { key: 'scoring', label: '评分管理', roles: ['admin', 'chief_judge', 'judge'] },
-        { key: 'users', label: '用户管理', roles: ['admin'] },
+        { 
+          key: 'competitions', 
+          label: (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>🏆</div>
+              <div style={{ fontSize: '12px' }}>赛事管理</div>
+            </div>
+          ),
+          roles: ['admin', 'chief_judge'] 
+        },
+        { 
+          key: 'events', 
+          label: (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>📋</div>
+              <div style={{ fontSize: '12px' }}>赛项管理</div>
+            </div>
+          ),
+          roles: ['admin', 'chief_judge'] 
+        },
+        { 
+          key: 'modules', 
+          label: (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>📦</div>
+              <div style={{ fontSize: '12px' }}>模块管理</div>
+            </div>
+          ),
+          roles: ['admin', 'chief_judge'] 
+        },
+        { 
+          key: 'scoring', 
+          label: (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>✍️</div>
+              <div style={{ fontSize: '12px' }}>评分管理</div>
+            </div>
+          ),
+          roles: ['admin', 'chief_judge', 'judge'] 
+        },
+        { 
+          key: 'users', 
+          label: (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>👥</div>
+              <div style={{ fontSize: '12px' }}>用户管理</div>
+            </div>
+          ),
+          roles: ['admin'] 
+        },
       ].filter(item => item.roles.includes(user.role));
 
       const renderContent = () => {
@@ -2505,37 +3365,120 @@
       };
 
       return (
-        <Layout style={{ minHeight: '100vh' }}>
-          <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
-              世界职业技能大赛 AI 评分系统
+        <Layout style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
+          <Header style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            padding: '0 24px',
+            height: '64px',
+            lineHeight: '64px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                background: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <span style={{ fontSize: '18px' }}>🏆</span>
+              </div>
+              <div style={{ lineHeight: '1.4' }}>
+                <div style={{ color: 'white', fontSize: '16px', fontWeight: 'bold' }}>
+                  世界技能大赛
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px' }}>
+                  AI 智能评分系统
+                </div>
+              </div>
             </div>
-            <div style={{ color: 'white' }}>
-              <Space>
-                <span>{user.name} ({user.role})</span>
-                <Button type="link" onClick={handleLogout} style={{ color: 'white' }}>
-                  退出
-                </Button>
-              </Space>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                padding: '6px 12px',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                height: '32px',
+                maxWidth: '200px'
+              }}>
+                <span style={{ fontSize: '14px', flexShrink: 0 }}>👤</span>
+                <span style={{ 
+                  fontWeight: 500, 
+                  fontSize: '14px', 
+                  color: 'white',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '80px'
+                }}>{user.name}</span>
+                <Tag style={{ 
+                  margin: 0,
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  color: 'white',
+                  border: 'none',
+                  fontSize: '11px',
+                  padding: '0 6px',
+                  height: '18px',
+                  lineHeight: '18px',
+                  flexShrink: 0
+                }}>
+                  {user.role === 'admin' ? '管理员' : 
+                   user.role === 'chief_judge' ? '裁判长' : 
+                   user.role === 'judge' ? '裁判' : '选手'}
+                </Tag>
+              </div>
+              <Button 
+                type="link" 
+                onClick={handleLogout} 
+                style={{ 
+                  color: 'white',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  height: '32px',
+                  fontSize: '13px'
+                }}
+              >
+                🚪 退出
+              </Button>
             </div>
           </Header>
           <Layout>
-            <Sider width={200} style={{ background: '#fff' }}>
+            <Sider width={88} style={{ 
+              background: '#fff',
+              boxShadow: '2px 0 8px rgba(0,0,0,0.05)'
+            }}>
               <Menu
                 mode="inline"
                 selectedKeys={[selectedMenu]}
-                style={{ height: '100%', borderRight: 0 }}
+                style={{ 
+                  height: '100%',
+                  borderRight: 0,
+                  paddingTop: '8px'
+                }}
                 items={menuItems}
-                onSelect={({ key }) => setSelectedMenu(key)}
+                onSelect={({ key }) => {
+                  setSelectedMenu(key);
+                  setRouteHash(key);
+                }}
               />
             </Sider>
-            <Layout style={{ padding: '24px' }}>
+            <Layout style={{ padding: '24px', background: 'transparent' }}>
               <Content
                 style={{
-                  padding: 24,
+                  padding: 32,
                   margin: 0,
                   minHeight: 280,
                   background: '#fff',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                 }}
               >
                 {renderContent()}
