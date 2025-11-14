@@ -1,0 +1,3495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>世界技能大赛 AI 评分系统</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏆</text></svg>">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/antd@5.11.5/dist/reset.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/antd@5.11.5/dist/antd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.5/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #1a73e8;
+      --primary-dark: #1557b0;
+      --primary-light: #4285f4;
+      --secondary-color: #00bfa5;
+      --success-color: #00c853;
+      --warning-color: #ff6d00;
+      --error-color: #dd2c00;
+      --background-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --tech-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      --surface-dark: #1a1d29;
+      --surface-light: #ffffff;
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --border-color: #e5e7eb;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    
+    body {
+      margin: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+        'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    #root {
+      min-height: 100vh;
+    }
+
+    /* 全局卡片样式 */
+    .ant-card {
+      border-radius: 12px !important;
+      box-shadow: var(--shadow-md) !important;
+      border: 1px solid var(--border-color) !important;
+      transition: all 0.3s ease !important;
+    }
+    
+    .ant-card:hover {
+      box-shadow: var(--shadow-lg) !important;
+      transform: translateY(-2px);
+    }
+
+    /* border-bottom: 2px solid var(--primary-color) !important; */
+    .ant-card-head {
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+      font-weight: 600 !important;
+    }
+
+    /* 表格优化 */
+    .ant-table {
+      background: white;
+      border-radius: 8px !important;
+      overflow: hidden;
+    }
+    
+    .ant-table-thead > tr > th {
+      background: linear-gradient(to bottom, #f8fafc, #f1f5f9) !important;
+      color: var(--text-primary) !important;
+      font-weight: 600 !important;
+      border-bottom: 2px solid var(--primary-color) !important;
+      padding: 16px !important;
+    }
+    
+    .ant-table-tbody > tr:hover > td {
+      background: #f0f9ff !important;
+    }
+    
+    .ant-table-tbody > tr > td {
+      padding: 14px 16px !important;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    /* 按钮优化 */
+    .ant-btn-primary {
+      background: var(--primary-color) !important;
+      border: none !important;
+      box-shadow: 0 2px 4px rgba(26, 115, 232, 0.3) !important;
+      font-weight: 500 !important;
+      border-radius: 6px !important;
+      transition: all 0.3s ease !important;
+    }
+    
+    .ant-btn-primary:hover {
+      background: var(--primary-dark) !important;
+      box-shadow: 0 4px 8px rgba(26, 115, 232, 0.4) !important;
+      transform: translateY(-1px);
+    }
+
+    .ant-btn {
+      border-radius: 6px !important;
+      font-weight: 500 !important;
+    }
+
+    /* Modal 优化 */
+    .ant-modal-header {
+      background: var(--tech-gradient) !important;
+      border-radius: 8px 8px 0 0 !important;
+      padding: 20px 24px !important;
+      border-bottom: none !important;
+    }
+    
+    .ant-modal-title {
+      color: white !important;
+      font-weight: 600 !important;
+      font-size: 18px !important;
+    }
+    
+    .ant-modal-close {
+      color: white !important;
+    }
+    
+    .ant-modal-close:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+    }
+    
+    .ant-modal-content {
+      border-radius: 8px !important;
+      overflow: hidden;
+      box-shadow: var(--shadow-xl) !important;
+    }
+
+    /* Drawer 优化 */
+    .ant-drawer-header {
+      background: var(--tech-gradient) !important;
+      border-bottom: none !important;
+      padding: 24px !important;
+    }
+    
+    .ant-drawer-title {
+      color: white !important;
+      font-weight: 600 !important;
+      font-size: 18px !important;
+    }
+    
+    .ant-drawer-close {
+      color: white !important;
+    }
+
+    .ant-drawer-close:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+    }
+
+    /* Tag 优化  padding: 4px 12px !important; */
+    .ant-tag {
+      border-radius: 12px !important;
+      font-weight: 500 !important;
+      border: none !important;
+    }
+
+    /* Badge 优化 */
+    .ant-badge-status-text {
+      font-weight: 500 !important;
+    }
+
+    /* Layout Header 优化 */
+    .ant-layout-header {
+      background: var(--tech-gradient) !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+      padding: 0 24px !important;
+      height: 64px !important;
+      line-height: 64px !important;
+    }
+
+    /* Sider 优化 */
+    .ant-layout-sider {
+      background: var(--surface-light) !important;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    /* Menu 优化 */
+    .ant-menu-item-selected {
+      background: linear-gradient(135deg, rgba(26, 115, 232, 0.15), rgba(26, 115, 232, 0.05)) !important;
+      border-radius: 8px !important;
+      color: var(--primary-color) !important;
+      font-weight: 600 !important;
+    }
+    
+    .ant-menu-item:hover {
+      background: rgba(26, 115, 232, 0.08) !important;
+      border-radius: 8px !important;
+      color: var(--primary-color) !important;
+    }
+
+    .ant-menu-item {
+      margin: 4px !important;
+      padding: 4px 0 !important;
+      height: auto !important;
+      line-height: normal !important;
+      border-radius: 8px !important;
+    }
+
+    .ant-menu-inline {
+      border-right: none !important;
+    }
+
+    /* Form 优化 */
+    .ant-form-item-label > label {
+      font-weight: 500 !important;
+      color: var(--text-primary) !important;
+    }
+    
+    .ant-input, .ant-input-number, .ant-select-selector, .ant-picker {
+      border-radius: 6px !important;
+      border: 1px solid var(--border-color) !important;
+      transition: all 0.3s ease !important;
+    }
+    
+    .ant-input:focus, .ant-input-number-focused .ant-input-number-input, 
+    .ant-select-focused .ant-select-selector, .ant-picker-focused {
+      border-color: var(--primary-color) !important;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1) !important;
+    }
+
+    /* 登录页面输入框样式 */
+    .login-page-form .ant-input,
+    .login-page-form .ant-input-password {
+      border: none !important;
+      background: #f5f5f5 !important;
+    }
+    
+    .login-page-form .ant-input:focus,
+    .login-page-form .ant-input-password .ant-input:focus {
+      background: #fff !important;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1) !important;
+    }
+
+    /* 状态颜色 */
+    .status-pending { color: #8c8c8c; }
+    .status-in_progress { color: #1890ff; }
+    .status-finished { color: #52c41a; }
+    .status-scoring { color: #fa8c16; }
+    .status-scoring_finished { color: #722ed1; }
+
+    /* 竞赛系统特色样式 */
+    .tech-header {
+      background: var(--tech-gradient);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .score-display {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* 数据可视化优化 */
+    .data-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow-md);
+      border-left: 4px solid var(--primary-color);
+      transition: all 0.3s ease;
+    }
+    
+    .data-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateX(4px);
+    }
+
+    /* 滚动条优化 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-dark);
+    }
+
+    /* Tabs 优化 */
+    .ant-tabs-tab {
+      font-weight: 500 !important;
+      padding: 12px 0 !important;
+    }
+
+    .ant-tabs-tab-active .ant-tabs-tab-btn {
+      color: var(--primary-color) !important;
+      font-weight: 600 !important;
+    }
+
+    .ant-tabs-ink-bar {
+      background: var(--primary-color) !important;
+      height: 3px !important;
+    }
+
+    /* Descriptions 优化 */
+    .ant-descriptions-item-label {
+      font-weight: 600 !important;
+      color: var(--text-primary) !important;
+    }
+
+    /* Select 优化 */
+    .ant-select-dropdown {
+      border-radius: 8px !important;
+      box-shadow: var(--shadow-lg) !important;
+    }
+
+    /* Upload 优化 */
+    .ant-upload-list-item {
+      border-radius: 6px !important;
+    }
+
+    /* Divider 优化 */
+    .ant-divider {
+      border-color: var(--border-color) !important;
+    }
+
+    /* Space 优化 */
+    .ant-space-item {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    /* Popconfirm 优化 */
+    .ant-popover-inner {
+      border-radius: 8px !important;
+      box-shadow: var(--shadow-lg) !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const {
+      Layout, Menu, Button, Form, Input, Table, Modal, Select, DatePicker,
+      message, Card, Tag, Tabs, Upload, Space, Descriptions, InputNumber,
+      Row, Col, Divider, Typography, Badge, Popconfirm, Drawer
+    } = antd;
+    const { Header, Content, Sider } = Layout;
+    const { Option } = Select;
+    const { Title, Text } = Typography;
+    const { TextArea } = Input;
+
+    // API配置
+    axios.defaults.baseURL = '/api';
+
+    // 设置Token
+    const setAuthToken = (token) => {
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        localStorage.setItem('token', token);
+      } else {
+        delete axios.defaults.headers.common['Authorization'];
+        localStorage.removeItem('token');
+      }
+    };
+
+    // 初始化Token
+    const token = localStorage.getItem('token');
+    if (token) {
+      setAuthToken(token);
+    }
+
+    // 登录组件
+    function LoginPage({ onLogin }) {
+      const [loading, setLoading] = useState(false);
+
+      const onFinish = async (values) => {
+        setLoading(true);
+        try {
+          const response = await axios.post('/auth/login', values);
+          setAuthToken(response.data.token);
+          onLogin(response.data.user);
+          message.success('登录成功');
+        } catch (error) {
+          message.error(error.response?.data?.error || '登录失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          {/* 背景装饰 */}
+          <div style={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            opacity: 0.1,
+            background: `
+              radial-gradient(circle at 20% 50%, white 1px, transparent 1px),
+              radial-gradient(circle at 80% 80%, white 1px, transparent 1px)
+            `,
+            backgroundSize: '50px 50px'
+          }}></div>
+
+          <Card 
+            style={{ 
+              width: 450,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '48px' }}
+          >
+            {/* Logo & Title */}
+            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                margin: '0 auto 24px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 16px rgba(102, 126, 234, 0.4)'
+              }}>
+                <span style={{ fontSize: '36px', color: 'white' }}>🏆</span>
+              </div>
+              <Title level={2} style={{ 
+                margin: '0 0 8px 0',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontWeight: 700
+              }}>
+                世界技能大赛
+              </Title>
+              <Text type="secondary" style={{ fontSize: '16px', fontWeight: 500 }}>
+                AI 智能评分系统
+              </Text>
+            </div>
+
+            <Form onFinish={onFinish} layout="vertical" size="large" className="login-page-form">
+              <Form.Item
+                label="用户名"
+                name="username"
+                rules={[{ required: true, message: '请输入用户名' }]}
+              >
+                <Input 
+                  prefix={<span style={{ marginRight: 8 }}>👤</span>}
+                  placeholder="请输入用户名" 
+                  style={{ height: '48px' }}
+                />
+              </Form.Item>
+              <Form.Item
+                label="密码"
+                name="password"
+                rules={[{ required: true, message: '请输入密码' }]}
+              >
+                <Input.Password 
+                  prefix={<span style={{ marginRight: 8 }}>🔒</span>}
+                  placeholder="请输入密码" 
+                  style={{ height: '48px' }}
+                />
+              </Form.Item>
+              <Form.Item style={{ marginBottom: 0 }}>
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
+                  loading={loading} 
+                  block
+                  style={{ 
+                    height: '48px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    marginTop: '16px'
+                  }}
+                >
+                  登录系统
+                </Button>
+              </Form.Item>
+            </Form>
+
+            {/* 底部提示 */}
+            <div style={{ 
+              marginTop: '32px', 
+              textAlign: 'center',
+              padding: '16px',
+              background: '#f8fafc',
+              borderRadius: '8px'
+            }}>
+              <Text type="secondary" style={{ fontSize: '13px' }}>
+                🔐 默认管理员: admin / admin123
+              </Text>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // 用户管理
+    function UserManagement() {
+      const [users, setUsers] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [modalVisible, setModalVisible] = useState(false);
+      const [editingUser, setEditingUser] = useState(null);
+      const [form] = Form.useForm();
+
+      const loadUsers = async () => {
+        setLoading(true);
+        try {
+          const response = await axios.get('/users');
+          setUsers(response.data);
+        } catch (error) {
+          message.error('加载用户失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadUsers();
+      }, []);
+
+      const handleAdd = () => {
+        setEditingUser(null);
+        form.resetFields();
+        setModalVisible(true);
+      };
+
+      const handleEdit = (user) => {
+        setEditingUser(user);
+        form.setFieldsValue(user);
+        setModalVisible(true);
+      };
+
+      const handleDelete = async (id) => {
+        try {
+          await axios.delete(`/users/${id}`);
+          message.success('删除成功');
+          loadUsers();
+        } catch (error) {
+          message.error('删除失败');
+        }
+      };
+
+      const handleSubmit = async (values) => {
+        try {
+          if (editingUser) {
+            await axios.put(`/users/${editingUser.id}`, values);
+            message.success('更新成功');
+          } else {
+            await axios.post('/users', values);
+            message.success('创建成功');
+          }
+          setModalVisible(false);
+          loadUsers();
+        } catch (error) {
+          message.error(error.response?.data?.error || '操作失败');
+        }
+      };
+
+      const columns = [
+        { title: 'ID', dataIndex: 'id', key: 'id' },
+        { title: '用户名', dataIndex: 'username', key: 'username' },
+        { title: '姓名', dataIndex: 'name', key: 'name' },
+        {
+          title: '角色',
+          dataIndex: 'role',
+          key: 'role',
+          render: (role) => {
+            const roleMap = {
+              admin: { text: '管理员', color: 'red' },
+              chief_judge: { text: '裁判长', color: 'blue' },
+              judge: { text: '裁判', color: 'green' },
+              contestant: { text: '选手', color: 'orange' }
+            };
+            const r = roleMap[role] || { text: role, color: 'default' };
+            return <Tag color={r.color}>{r.text}</Tag>;
+          }
+        },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => (
+            <Space>
+              <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>
+              <Button size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
+            </Space>
+          )
+        }
+      ];
+
+      return (
+        <div>
+          {/* 页面标题 */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <Title level={3} style={{ color: 'white', margin: 0 }}>
+                👥 用户管理
+              </Title>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+                管理系统用户账号和权限
+              </Text>
+            </div>
+            <Button 
+              onClick={handleAdd}
+              size="large"
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                color: 'white',
+                fontWeight: 500
+              }}
+            >
+              ➕ 添加用户
+            </Button>
+          </div>
+
+          <Table
+            loading={loading}
+            dataSource={users}
+            columns={columns}
+            rowKey="id"
+          />
+          <Drawer
+            title={editingUser ? '编辑用户' : '添加用户'}
+            open={modalVisible}
+            onClose={() => setModalVisible(false)}
+            width={480}
+          >
+            <Form form={form} onFinish={handleSubmit} layout="vertical">
+              {!editingUser && (
+                <Form.Item
+                  label="用户名"
+                  name="username"
+                  rules={[{ required: true }]}
+                >
+                  <Input />
+                </Form.Item>
+              )}
+              <Form.Item
+                label="姓名"
+                name="name"
+                rules={[{ required: true }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="角色"
+                name="role"
+                rules={[{ required: true }]}
+              >
+                <Select>
+                  <Option value="admin">管理员</Option>
+                  <Option value="chief_judge">裁判长</Option>
+                  <Option value="judge">裁判</Option>
+                  <Option value="contestant">选手</Option>
+                </Select>
+              </Form.Item>
+              {!editingUser && (
+                <Form.Item
+                  label="密码"
+                  name="password"
+                  rules={[{ required: true }]}
+                >
+                  <Input.Password />
+                </Form.Item>
+              )}
+              {editingUser && (
+                <Form.Item label="新密码（留空表示不修改）" name="password">
+                  <Input.Password />
+                </Form.Item>
+              )}
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">提交</Button>
+                  <Button onClick={() => setModalVisible(false)}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Drawer>
+        </div>
+      );
+    }
+
+    // 赛事管理
+    function CompetitionManagement({ user }) {
+      const [competitions, setCompetitions] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [modalVisible, setModalVisible] = useState(false);
+      const [editingItem, setEditingItem] = useState(null);
+      const [form] = Form.useForm();
+
+      const loadData = async () => {
+        setLoading(true);
+        try {
+          const response = await axios.get('/competitions');
+          setCompetitions(response.data);
+        } catch (error) {
+          if (error.response?.status === 403) {
+            message.error('无权限访问：您没有权限查看赛事数据');
+          } else {
+            message.error('加载赛事失败');
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadData();
+      }, []);
+
+      const handleAdd = () => {
+        if (user.role !== 'admin') {
+          message.error('无权限：只有管理员才能新建赛事');
+          return;
+        }
+        setEditingItem(null);
+        form.resetFields();
+        setModalVisible(true);
+      };
+
+      const handleEdit = (item) => {
+        if (user.role !== 'admin') {
+          message.error('无权限：只有管理员才能编辑赛事');
+          return;
+        }
+        setEditingItem(item);
+        form.setFieldsValue({
+          ...item,
+          start_time: item.start_time ? dayjs(item.start_time) : null,
+          end_time: item.end_time ? dayjs(item.end_time) : null
+        });
+        setModalVisible(true);
+      };
+
+      const handleDelete = async (id) => {
+        if (user.role !== 'admin') {
+          message.error('无权限：只有管理员才能删除赛事');
+          return;
+        }
+        try {
+          await axios.delete(`/competitions/${id}`);
+          message.success('删除成功');
+          loadData();
+        } catch (error) {
+          if (error.response?.status === 403) {
+            message.error('无权限：您没有权限删除此赛事');
+          } else {
+            message.error('删除失败');
+          }
+        }
+      };
+
+      const handleSubmit = async (values) => {
+        try {
+          const data = {
+            ...values,
+            start_time: values.start_time.toISOString(),
+            end_time: values.end_time.toISOString()
+          };
+          if (editingItem) {
+            await axios.put(`/competitions/${editingItem.id}`, data);
+            message.success('更新成功');
+          } else {
+            await axios.post('/competitions', data);
+            message.success('创建成功');
+          }
+          setModalVisible(false);
+          loadData();
+        } catch (error) {
+          message.error('操作失败');
+        }
+      };
+
+      const columns = [
+        { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
+        { title: '赛事名称', dataIndex: 'name', key: 'name' },
+        {
+          title: '开始时间',
+          dataIndex: 'start_time',
+          key: 'start_time',
+          render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+        },
+        {
+          title: '结束时间',
+          dataIndex: 'end_time',
+          key: 'end_time',
+          render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+        },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => (
+            <Space>
+              {user.role === 'admin' ? (
+                <>
+                  <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>
+                  <Button size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
+                </>
+              ) : (
+                <Text type="secondary">无操作权限</Text>
+              )}
+            </Space>
+          )
+        }
+      ];
+
+      return (
+        <div>
+          {/* 页面标题 */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <Title level={3} style={{ color: 'white', margin: 0 }}>
+                🏆 赛事管理
+              </Title>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+                管理世界技能大赛的各项赛事信息
+              </Text>
+            </div>
+            {user.role === 'admin' && (
+              <Button 
+                onClick={handleAdd}
+                size="large"
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  color: 'white',
+                  fontWeight: 500
+                }}
+              >
+                ➕ 添加赛事
+              </Button>
+            )}
+          </div>
+
+          <Table
+            loading={loading}
+            dataSource={competitions}
+            columns={columns}
+            rowKey="id"
+          />
+          <Drawer
+            title={editingItem ? '编辑赛事' : '添加赛事'}
+            open={modalVisible}
+            onClose={() => setModalVisible(false)}
+            width={600}
+          >
+            <Form form={form} onFinish={handleSubmit} layout="vertical">
+              <Form.Item label="赛事名称" name="name" rules={[{ required: true }]}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="开始时间" name="start_time" rules={[{ required: true }]}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item label="结束时间" name="end_time" rules={[{ required: true }]}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">提交</Button>
+                  <Button onClick={() => setModalVisible(false)}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Drawer>
+        </div>
+      );
+    }
+
+    // 赛项管理
+    function EventManagement({ user }) {
+      const [events, setEvents] = useState([]);
+      const [competitions, setCompetitions] = useState([]);
+      const [users, setUsers] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [modalVisible, setModalVisible] = useState(false);
+      const [assignModalVisible, setAssignModalVisible] = useState(false);
+      const [detailModalVisible, setDetailModalVisible] = useState(false);
+      const [assignType, setAssignType] = useState('');
+      const [selectedEvent, setSelectedEvent] = useState(null);
+      const [eventDetail, setEventDetail] = useState(null);
+      const [editingItem, setEditingItem] = useState(null);
+      const [form] = Form.useForm();
+      const [assignForm] = Form.useForm();
+
+      const loadData = async () => {
+        setLoading(true);
+        try {
+          const [eventsRes, competitionsRes, usersRes] = await Promise.all([
+            axios.get('/events'),
+            axios.get('/competitions'),
+            axios.get('/users')
+          ]);
+          setEvents(eventsRes.data);
+          setCompetitions(competitionsRes.data);
+          setUsers(usersRes.data);
+        } catch (error) {
+          console.error('Load data error:', error);
+          if (error.response) {
+            message.error(`加载数据失败: ${error.response.data.error || error.response.status}`);
+          } else {
+            message.error('加载数据失败: 网络错误');
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadData();
+      }, []);
+
+      const handleAdd = () => {
+        if (user.role !== 'admin') {
+          message.error('无权限：只有管理员才能新建赛项');
+          return;
+        }
+        setEditingItem(null);
+        form.resetFields();
+        setModalVisible(true);
+      };
+
+      const handleEdit = (item) => {
+        if (user.role !== 'admin') {
+          message.error('无权限：只有管理员才能编辑赛项');
+          return;
+        }
+        setEditingItem(item);
+        form.setFieldsValue({
+          ...item,
+          start_time: item.start_time ? dayjs(item.start_time) : null,
+          end_time: item.end_time ? dayjs(item.end_time) : null
+        });
+        setModalVisible(true);
+      };
+
+      const handleDelete = async (id) => {
+        if (user.role !== 'admin') {
+          message.error('无权限：只有管理员才能删除赛项');
+          return;
+        }
+        try {
+          await axios.delete(`/events/${id}`);
+          message.success('删除成功');
+          loadData();
+        } catch (error) {
+          if (error.response?.status === 403) {
+            message.error('无权限：您没有权限删除此赛项');
+          } else {
+            message.error('删除失败');
+          }
+        }
+      };
+
+      const handleSubmit = async (values) => {
+        try {
+          const data = {
+            ...values,
+            start_time: values.start_time.toISOString(),
+            end_time: values.end_time.toISOString()
+          };
+          if (editingItem) {
+            await axios.put(`/events/${editingItem.id}`, data);
+            message.success('更新成功');
+          } else {
+            await axios.post('/events', data);
+            message.success('创建成功');
+          }
+          setModalVisible(false);
+          loadData();
+        } catch (error) {
+          message.error('操作失败');
+        }
+      };
+
+      const handleAssign = (event, type) => {
+        setSelectedEvent(event);
+        setAssignType(type);
+        assignForm.resetFields();
+        setAssignModalVisible(true);
+      };
+
+      const handleAssignSubmit = async (values) => {
+        try {
+          if (assignType === 'chief_judge') {
+            await axios.post(`/events/${selectedEvent.id}/chief-judges`, {
+              chief_judge_id: values.user_id
+            });
+          } else if (assignType === 'judge') {
+            await axios.post(`/events/${selectedEvent.id}/judges`, {
+              judge_id: values.user_id
+            });
+          } else if (assignType === 'contestant') {
+            await axios.post(`/events/${selectedEvent.id}/contestants`, {
+              contestant_id: values.user_id
+            });
+          } else if (assignType === 'judge_contestant') {
+            await axios.post(`/events/${selectedEvent.id}/judge-contestants`, values);
+          }
+          message.success('分配成功');
+          setAssignModalVisible(false);
+          loadData();
+        } catch (error) {
+          message.error('分配失败');
+        }
+      };
+
+      const handleViewDetail = async (event) => {
+        try {
+          const response = await axios.get(`/events/${event.id}`);
+          setEventDetail(response.data);
+          setDetailModalVisible(true);
+        } catch (error) {
+          message.error('加载赛项详情失败');
+        }
+      };
+
+      const handleRemoveAssignment = async (type, eventId, userId, userId2 = null) => {
+        try {
+          if (type === 'chief_judge') {
+            await axios.delete(`/events/${eventId}/chief-judges/${userId}`);
+          } else if (type === 'judge') {
+            await axios.delete(`/events/${eventId}/judges/${userId}`);
+          } else if (type === 'contestant') {
+            await axios.delete(`/events/${eventId}/contestants/${userId}`);
+          } else if (type === 'judge_contestant') {
+            await axios.delete(`/events/${eventId}/judge-contestants?judge_id=${userId}&contestant_id=${userId2}`);
+          }
+          message.success('移除成功');
+          handleViewDetail(eventDetail);
+        } catch (error) {
+          message.error('移除失败');
+        }
+      };
+
+      const columns = [
+        { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+        { title: '赛项名称', dataIndex: 'name', key: 'name' },
+        { title: '赛事', dataIndex: 'competition_name', key: 'competition_name' },
+        {
+          title: '开始时间',
+          dataIndex: 'start_time',
+          key: 'start_time',
+          render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+        },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => {
+            const { Dropdown } = antd;
+            
+            if (user.role === 'admin') {
+              const menuItems = [
+                {
+                  key: 'edit',
+                  label: '编辑',
+                  onClick: () => handleEdit(record)
+                },
+                {
+                  key: 'assign_chief_judge',
+                  label: '分配裁判长',
+                  onClick: () => handleAssign(record, 'chief_judge')
+                },
+                {
+                  key: 'assign_judge',
+                  label: '分配裁判',
+                  onClick: () => handleAssign(record, 'judge')
+                },
+                {
+                  key: 'assign_contestant',
+                  label: '分配选手',
+                  onClick: () => handleAssign(record, 'contestant')
+                },
+                {
+                  key: 'assign_judge_contestant',
+                  label: '分配裁判-选手',
+                  onClick: () => handleAssign(record, 'judge_contestant')
+                },
+                {
+                  key: 'delete',
+                  label: '删除',
+                  danger: true,
+                  onClick: () => handleDelete(record.id)
+                }
+              ];
+              
+              return (
+                <Space size="small">
+                  <Button size="small" onClick={() => handleViewDetail(record)}>查看详情</Button>
+                  <Dropdown menu={{ items: menuItems }} placement="bottomRight">
+                    <Button size="small">更多 ▼</Button>
+                  </Dropdown>
+                </Space>
+              );
+            }
+            
+            return <Button size="small" onClick={() => handleViewDetail(record)}>查看详情</Button>;
+          }
+        }
+      ];
+
+      const getRoleUsers = () => {
+        if (assignType === 'chief_judge') {
+          return users.filter(u => u.role === 'chief_judge');
+        } else if (assignType === 'judge') {
+          return users.filter(u => u.role === 'judge');
+        } else if (assignType === 'contestant') {
+          return users.filter(u => u.role === 'contestant');
+        }
+        return users;
+      };
+
+      return (
+        <div>
+          {/* 页面标题 */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <Title level={3} style={{ color: 'white', margin: 0 }}>
+                📋 赛项管理
+              </Title>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+                管理赛事的具体竞赛项目和人员分配
+              </Text>
+            </div>
+            {user.role === 'admin' && (
+              <Button 
+                onClick={handleAdd}
+                size="large"
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  color: 'white',
+                  fontWeight: 500
+                }}
+              >
+                ➕ 添加赛项
+              </Button>
+            )}
+          </div>
+
+          <Table
+            loading={loading}
+            dataSource={events}
+            columns={columns}
+            rowKey="id"
+          />
+          <Drawer
+            title={editingItem ? '编辑赛项' : '添加赛项'}
+            open={modalVisible}
+            onClose={() => setModalVisible(false)}
+            width={600}
+          >
+            <Form form={form} onFinish={handleSubmit} layout="vertical">
+              <Form.Item label="赛事" name="competition_id" rules={[{ required: true }]}>
+                <Select>
+                  {competitions.map(c => (
+                    <Option key={c.id} value={c.id}>{c.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item label="赛项名称" name="name" rules={[{ required: true }]}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="开始时间" name="start_time" rules={[{ required: true }]}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item label="结束时间" name="end_time" rules={[{ required: true }]}>
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">提交</Button>
+                  <Button onClick={() => setModalVisible(false)}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Drawer>
+          <Drawer
+            title={`分配${assignType === 'chief_judge' ? '裁判长' : assignType === 'judge' ? '裁判' : assignType === 'contestant' ? '选手' : '裁判-选手'}`}
+            open={assignModalVisible}
+            onClose={() => setAssignModalVisible(false)}
+            width={500}
+          >
+            <Form form={assignForm} onFinish={handleAssignSubmit} layout="vertical">
+              {assignType === 'judge_contestant' ? (
+                <>
+                  <Form.Item label="裁判" name="judge_id" rules={[{ required: true }]}>
+                    <Select>
+                      {users.filter(u => u.role === 'judge').map(u => (
+                        <Option key={u.id} value={u.id}>{u.name} ({u.username})</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <Form.Item label="选手" name="contestant_id" rules={[{ required: true }]}>
+                    <Select>
+                      {users.filter(u => u.role === 'contestant').map(u => (
+                        <Option key={u.id} value={u.id}>{u.name} ({u.username})</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </>
+              ) : (
+                <Form.Item label="用户" name="user_id" rules={[{ required: true }]}>
+                  <Select>
+                    {getRoleUsers().map(u => (
+                      <Option key={u.id} value={u.id}>{u.name} ({u.username})</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              )}
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">提交</Button>
+                  <Button onClick={() => setAssignModalVisible(false)}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Drawer>
+          <Drawer
+            title={`赛项详情 - ${eventDetail?.name}`}
+            open={detailModalVisible}
+            onClose={() => setDetailModalVisible(false)}
+            width="80%"
+          >
+            {eventDetail && (
+              <div>
+                <Descriptions bordered column={2}>
+                  <Descriptions.Item label="赛项名称">{eventDetail.name}</Descriptions.Item>
+                  <Descriptions.Item label="赛事">{eventDetail.competition_name}</Descriptions.Item>
+                  <Descriptions.Item label="开始时间">
+                    {dayjs(eventDetail.start_time).format('YYYY-MM-DD HH:mm')}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="结束时间">
+                    {dayjs(eventDetail.end_time).format('YYYY-MM-DD HH:mm')}
+                  </Descriptions.Item>
+                </Descriptions>
+                
+                <Tabs defaultActiveKey="chief_judges" style={{ marginTop: 24 }}>
+                  <Tabs.TabPane tab={`裁判长 (${eventDetail.chief_judges.length})`} key="chief_judges">
+                    <Table
+                      dataSource={eventDetail.chief_judges}
+                      columns={[
+                        { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
+                        { title: '用户名', dataIndex: 'username', key: 'username' },
+                        { title: '姓名', dataIndex: 'name', key: 'name' },
+                        {
+                          title: '操作',
+                          key: 'action',
+                          render: (_, record) => (
+                            user.role === 'admin' ? (
+                              <Button
+                                size="small"
+                                danger
+                                onClick={() => handleRemoveAssignment('chief_judge', eventDetail.id, record.id)}
+                              >
+                                移除
+                              </Button>
+                            ) : null
+                          )
+                        }
+                      ]}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                    />
+                  </Tabs.TabPane>
+                  <Tabs.TabPane tab={`裁判 (${eventDetail.judges.length})`} key="judges">
+                    <Table
+                      dataSource={eventDetail.judges}
+                      columns={[
+                        { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
+                        { title: '用户名', dataIndex: 'username', key: 'username' },
+                        { title: '姓名', dataIndex: 'name', key: 'name' },
+                        {
+                          title: '操作',
+                          key: 'action',
+                          render: (_, record) => (
+                            user.role === 'admin' ? (
+                              <Button
+                                size="small"
+                                danger
+                                onClick={() => handleRemoveAssignment('judge', eventDetail.id, record.id)}
+                              >
+                                移除
+                              </Button>
+                            ) : null
+                          )
+                        }
+                      ]}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                    />
+                  </Tabs.TabPane>
+                  <Tabs.TabPane tab={`选手 (${eventDetail.contestants.length})`} key="contestants">
+                    <Table
+                      dataSource={eventDetail.contestants}
+                      columns={[
+                        { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
+                        { title: '用户名', dataIndex: 'username', key: 'username' },
+                        { title: '姓名', dataIndex: 'name', key: 'name' },
+                        {
+                          title: '操作',
+                          key: 'action',
+                          render: (_, record) => (
+                            user.role === 'admin' ? (
+                              <Button
+                                size="small"
+                                danger
+                                onClick={() => handleRemoveAssignment('contestant', eventDetail.id, record.id)}
+                              >
+                                移除
+                              </Button>
+                            ) : null
+                          )
+                        }
+                      ]}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                    />
+                  </Tabs.TabPane>
+                  <Tabs.TabPane tab={`模块 (${eventDetail.modules?.length || 0})`} key="modules">
+                    <Table
+                      dataSource={eventDetail.modules}
+                      columns={[
+                        { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
+                        { title: '模块名称', dataIndex: 'name', key: 'name' },
+                        { title: '时长(分钟)', dataIndex: 'duration_minutes', key: 'duration_minutes' },
+                        {
+                          title: '状态',
+                          dataIndex: 'status',
+                          key: 'status',
+                          render: (status) => {
+                            const statusMap = {
+                              pending: { text: '未开始', color: 'default' },
+                              in_progress: { text: '进行中', color: 'processing' },
+                              finished: { text: '已结束', color: 'success' },
+                              scoring: { text: '评分中', color: 'warning' },
+                              scoring_finished: { text: '评分结束', color: 'purple' }
+                            };
+                            const s = statusMap[status] || { text: status, color: 'default' };
+                            return <Badge status={s.color} text={s.text} />;
+                          }
+                        }
+                      ]}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                    />
+                  </Tabs.TabPane>
+                  <Tabs.TabPane tab="裁判-选手分配" key="assignments">
+                    <JudgeContestantAssignments eventId={eventDetail.id} user={user} />
+                  </Tabs.TabPane>
+                </Tabs>
+              </div>
+            )}
+          </Drawer>
+        </div>
+      );
+    }
+
+    // 模块管理
+    function ModuleManagement({ user }) {
+      const [modules, setModules] = useState([]);
+      const [events, setEvents] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [modalVisible, setModalVisible] = useState(false);
+      const [criteriaModalVisible, setCriteriaModalVisible] = useState(false);
+      const [attachmentModalVisible, setAttachmentModalVisible] = useState(false);
+      const [selectedModule, setSelectedModule] = useState(null);
+      const [scoringCriteria, setScoringCriteria] = useState(null);
+      const [problemAttachments, setProblemAttachments] = useState([]);
+      const [answerAttachments, setAnswerAttachments] = useState([]);
+      const [editingItem, setEditingItem] = useState(null);
+      const [form] = Form.useForm();
+      const [itemForm] = Form.useForm();
+
+      const loadData = async () => {
+        setLoading(true);
+        try {
+          const [modulesRes, eventsRes] = await Promise.all([
+            axios.get('/modules'),
+            axios.get('/events')
+          ]);
+          setModules(modulesRes.data);
+          setEvents(eventsRes.data);
+        } catch (error) {
+          message.error('加载数据失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadData();
+      }, []);
+
+      const handleAdd = () => {
+        if (!['admin', 'chief_judge'].includes(user.role)) {
+          message.error('无权限：只有管理员和裁判长才能新建模块');
+          return;
+        }
+        setEditingItem(null);
+        form.resetFields();
+        setModalVisible(true);
+      };
+
+      const handleEdit = (item) => {
+        if (!['admin', 'chief_judge'].includes(user.role)) {
+          message.error('无权限：只有管理员和裁判长才能编辑模块');
+          return;
+        }
+        setEditingItem(item);
+        form.setFieldsValue(item);
+        setModalVisible(true);
+      };
+
+      const handleDelete = async (id) => {
+        if (!['admin', 'chief_judge'].includes(user.role)) {
+          message.error('无权限：只有管理员和裁判长才能删除模块');
+          return;
+        }
+        try {
+          await axios.delete(`/modules/${id}`);
+          message.success('删除成功');
+          loadData();
+        } catch (error) {
+          if (error.response?.status === 403) {
+            message.error('无权限：您没有权限删除此模块');
+          } else {
+            message.error('删除失败');
+          }
+        }
+      };
+
+      const handleSubmit = async (values) => {
+        try {
+          if (editingItem) {
+            await axios.put(`/modules/${editingItem.id}`, values);
+            message.success('更新成功');
+          } else {
+            await axios.post('/modules', values);
+            message.success('创建成功');
+          }
+          setModalVisible(false);
+          loadData();
+        } catch (error) {
+          message.error('操作失败');
+        }
+      };
+
+      const handleStatusChange = async (id, status) => {
+        try {
+          await axios.patch(`/modules/${id}/status`, { status });
+          message.success('状态更新成功');
+          loadData();
+        } catch (error) {
+          message.error('状态更新失败');
+        }
+      };
+
+      const handleManageCriteria = async (module) => {
+        setSelectedModule(module);
+        try {
+          const response = await axios.get(`/scoring/modules/${module.id}/criteria`);
+          setScoringCriteria(response.data);
+          setCriteriaModalVisible(true);
+        } catch (error) {
+          message.error('加载评分标准失败');
+        }
+      };
+
+      const handleManageAttachments = (module) => {
+        // 选手在模块未开始时无法查看
+        if (user.role === 'contestant' && module.status === 'pending') {
+          message.error('模块尚未开始，无法查看赛题');
+          return;
+        }
+        
+        setSelectedModule(module);
+        setAttachmentModalVisible(true);
+        loadProblemAttachments(module.id);
+        if (user.role === 'contestant') {
+          loadAnswerAttachments(module.id, user.id);
+        }
+      };
+
+      const handleCreateCriteria = async () => {
+        try {
+          const response = await axios.post(`/scoring/modules/${selectedModule.id}/criteria`);
+          setScoringCriteria(response.data);
+          message.success('创建成功');
+        } catch (error) {
+          message.error('创建失败');
+        }
+      };
+
+      const handleAddItem = async (values) => {
+        try {
+          await axios.post(`/scoring/criteria/${scoringCriteria.id}/items`, values);
+          message.success('添加成功');
+          itemForm.resetFields();
+          handleManageCriteria(selectedModule);
+        } catch (error) {
+          message.error('添加失败');
+        }
+      };
+
+      const handleDeleteItem = async (itemId) => {
+        try {
+          await axios.delete(`/scoring/items/${itemId}`);
+          message.success('删除成功');
+          handleManageCriteria(selectedModule);
+        } catch (error) {
+          message.error('删除失败');
+        }
+      };
+
+      const loadProblemAttachments = async (moduleId) => {
+        try {
+          const response = await axios.get(`/attachments/modules/${moduleId}/problem`);
+          setProblemAttachments(response.data);
+        } catch (error) {
+          console.error('加载赛题附件失败:', error);
+          setProblemAttachments([]);
+        }
+      };
+
+      const loadAnswerAttachments = async (moduleId, contestantId) => {
+        try {
+          const response = await axios.get(`/attachments/modules/${moduleId}/contestants/${contestantId}/answer`);
+          setAnswerAttachments(response.data);
+        } catch (error) {
+          console.error('加载答题附件失败:', error);
+          setAnswerAttachments([]);
+        }
+      };
+
+      const handleUploadProblem = async (info) => {
+        if (info.file.status === 'done') {
+          message.success('赛题上传成功');
+          loadProblemAttachments(selectedModule.id);
+        } else if (info.file.status === 'error') {
+          message.error('赛题上传失败');
+        }
+      };
+
+      const handleUploadAnswer = async (info) => {
+        if (info.file.status === 'done') {
+          message.success('答题上传成功');
+          loadAnswerAttachments(selectedModule.id, user.id);
+        } else if (info.file.status === 'error') {
+          message.error('答题上传失败');
+        }
+      };
+
+      const handleDeleteProblem = async (id) => {
+        try {
+          await axios.delete(`/attachments/problem/${id}`);
+          message.success('删除成功');
+          loadProblemAttachments(selectedModule.id);
+        } catch (error) {
+          message.error('删除失败');
+        }
+      };
+
+      const handleDeleteAnswer = async (id) => {
+        try {
+          await axios.delete(`/attachments/answer/${id}`);
+          message.success('删除成功');
+          loadAnswerAttachments(selectedModule.id, user.id);
+        } catch (error) {
+          message.error('删除失败');
+        }
+      };
+
+      const handleDownload = (filepath, filename) => {
+        window.open(`/api/attachments/download?filepath=${encodeURIComponent(filepath)}`);
+      };
+
+      // AI评分处理函数
+      const handleModuleAiEvaluation = (moduleId) => {
+        Modal.confirm({
+          title: '确认启动AI评分',
+          content: (
+            <div>
+              <p>⚠️ AI评分需要处理较长时间，请勿重复操作。</p>
+              <p>确定要对此模块的所有选手启动AI评分吗？</p>
+            </div>
+          ),
+          okText: '确认启动',
+          cancelText: '取消',
+          onOk: async () => {
+            try {
+              await axios.post(`/modules/${moduleId}/ai-evaluation`);
+              message.success('AI评分已启动，请耐心等待');
+            } catch (error) {
+              if (error.response?.status === 409) {
+                message.warning('AI评分正在进行中，请勿重复操作');
+              } else {
+                message.error('启动AI评分失败：' + (error.response?.data?.error || '未知错误'));
+              }
+            }
+          }
+        });
+      };
+
+      const columns = [
+        { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+        { title: '模块名称', dataIndex: 'name', key: 'name' },
+        {
+          title: '赛项',
+          dataIndex: 'event_id',
+          key: 'event_id',
+          render: (id) => events.find(e => e.id === id)?.name || '-'
+        },
+        {
+          title: '时长(分钟)',
+          dataIndex: 'duration_minutes',
+          key: 'duration_minutes',
+          width: 110
+        },
+        {
+          title: '状态',
+          dataIndex: 'status',
+          key: 'status',
+          width: 100,
+          render: (status) => {
+            const statusMap = {
+              pending: { text: '未开始', color: 'default' },
+              in_progress: { text: '进行中', color: 'processing' },
+              finished: { text: '已结束', color: 'success' },
+              scoring: { text: '评分中', color: 'warning' },
+              scoring_finished: { text: '评分结束', color: 'purple' }
+            };
+            const s = statusMap[status] || { text: status, color: 'default' };
+            return <Badge status={s.color} text={s.text} />;
+          }
+        },
+        {
+          title: '操作',
+          key: 'action',
+          width: 500,
+          render: (_, record) => {
+            const { Dropdown } = antd;
+            
+            if (['admin', 'chief_judge'].includes(user.role)) {
+              const menuItems = [
+                {
+                  key: 'edit',
+                  label: '编辑',
+                  onClick: () => handleEdit(record)
+                },
+                {
+                  key: 'ai',
+                  label: 'AI评分',
+                  onClick: () => handleModuleAiEvaluation(record.id),
+                  disabled: !['scoring', 'finished'].includes(record.status)
+                },
+                {
+                  key: 'delete',
+                  label: '删除',
+                  danger: true,
+                  onClick: () => handleDelete(record.id)
+                }
+              ];
+              
+              return (
+                <Space size="small">
+                  <Select
+                    size="small"
+                    value={record.status}
+                    onChange={(val) => handleStatusChange(record.id, val)}
+                    style={{ width: 95 }}
+                  >
+                    <Option value="pending">未开始</Option>
+                    <Option value="in_progress">进行中</Option>
+                    <Option value="finished">已结束</Option>
+                    <Option value="scoring">评分中</Option>
+                    <Option value="scoring_finished">评分结束</Option>
+                  </Select>
+                  <Button size="small" onClick={() => handleManageCriteria(record)}>评分标准</Button>
+                  <Button size="small" onClick={() => handleManageAttachments(record)}>赛题</Button>
+                  <Dropdown menu={{ items: menuItems }} placement="bottomRight">
+                    <Button size="small">更多 ▼</Button>
+                  </Dropdown>
+                </Space>
+              );
+            }
+            
+            return (
+              <Button 
+                size="small" 
+                onClick={() => handleManageAttachments(record)}
+                disabled={user.role === 'contestant' && record.status === 'pending'}
+              >
+                查看赛题/答题
+              </Button>
+            );
+          }
+        }
+      ];
+
+      return (
+        <div>
+          {/* 页面标题 */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <Title level={3} style={{ color: 'white', margin: 0 }}>
+                📦 模块管理
+              </Title>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+                管理赛项的考核模块、评分标准和赛题资料
+              </Text>
+            </div>
+            {['admin', 'chief_judge'].includes(user.role) && (
+              <Button 
+                onClick={handleAdd}
+                size="large"
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  color: 'white',
+                  fontWeight: 500
+                }}
+              >
+                ➕ 添加模块
+              </Button>
+            )}
+          </div>
+
+          <Table
+            loading={loading}
+            dataSource={modules}
+            columns={columns}
+            rowKey="id"
+          />
+          <Drawer
+            title={editingItem ? '编辑模块' : '添加模块'}
+            open={modalVisible}
+            onClose={() => setModalVisible(false)}
+            width={600}
+          >
+            <Form form={form} onFinish={handleSubmit} layout="vertical">
+              <Form.Item label="赛项" name="event_id" rules={[{ required: true }]}>
+                <Select>
+                  {events.map(e => (
+                    <Option key={e.id} value={e.id}>{e.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item label="模块名称" name="name" rules={[{ required: true }]}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="时长(分钟)" name="duration_minutes" rules={[{ required: true }]}>
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">提交</Button>
+                  <Button onClick={() => setModalVisible(false)}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Drawer>
+          <Drawer
+            title={`评分标准管理 - ${selectedModule?.name}`}
+            open={criteriaModalVisible}
+            onClose={() => setCriteriaModalVisible(false)}
+            width="80%"
+          >
+            {!scoringCriteria ? (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <p>尚未创建评分标准</p>
+                <Button type="primary" onClick={handleCreateCriteria}>创建评分标准</Button>
+              </div>
+            ) : (
+              <div>
+                <Title level={5}>评分项列表</Title>
+                <Table
+                  dataSource={scoringCriteria.items.filter(item => item.id)}
+                  columns={[
+                    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+                    {
+                      title: '描述',
+                      dataIndex: 'description',
+                      key: 'description',
+                      ellipsis: true
+                    },
+                    {
+                      title: '类型',
+                      dataIndex: 'evaluation_type',
+                      key: 'evaluation_type',
+                      render: (type) => type === 'objective' ? '客观' : '主观'
+                    },
+                    {
+                      title: '满分',
+                      dataIndex: 'max_score',
+                      key: 'max_score'
+                    },
+                    {
+                      title: '操作',
+                      key: 'action',
+                      render: (_, record) => (
+                        <Button size="small" danger onClick={() => handleDeleteItem(record.id)}>
+                          删除
+                        </Button>
+                      )
+                    }
+                  ]}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                />
+                <Divider />
+                <Title level={5}>添加评分项</Title>
+                <Form form={itemForm} onFinish={handleAddItem} layout="vertical">
+                  <Form.Item
+                    label="评分标准描述（支持富文本/HTML）"
+                    name="description"
+                    rules={[{ required: true }]}
+                  >
+                    <TextArea rows={3} />
+                  </Form.Item>
+                  <Form.Item label="评估类型" name="evaluation_type" rules={[{ required: true }]}>
+                    <Select>
+                      <Option value="objective">客观</Option>
+                      <Option value="subjective">主观</Option>
+                    </Select>
+                  </Form.Item>
+                  <Form.Item label="满分" name="max_score" rules={[{ required: true }]}>
+                    <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
+                  </Form.Item>
+                  <Form.Item label="排序" name="sort_order">
+                    <InputNumber min={0} style={{ width: '100%' }} />
+                  </Form.Item>
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit">添加评分项</Button>
+                  </Form.Item>
+                </Form>
+              </div>
+            )}
+          </Drawer>
+          <Drawer
+            title={`附件管理 - ${selectedModule?.name}`}
+            open={attachmentModalVisible}
+            onClose={() => setAttachmentModalVisible(false)}
+            width="80%"
+          >
+            <Tabs defaultActiveKey="problem">
+              <Tabs.TabPane tab="赛题附件" key="problem">
+                {['admin', 'chief_judge'].includes(user.role) && (
+                  <div style={{ marginBottom: 16 }}>
+                    <Upload
+                      name="file"
+                      action={`/api/attachments/modules/${selectedModule?.id}/problem`}
+                      headers={{
+                        Authorization: axios.defaults.headers.common['Authorization']
+                      }}
+                      onChange={handleUploadProblem}
+                    >
+                      <Button>上传赛题</Button>
+                    </Upload>
+                  </div>
+                )}
+                <Table
+                  dataSource={problemAttachments}
+                  columns={[
+                    { title: '文件名', dataIndex: 'filename', key: 'filename' },
+                    {
+                      title: '上传时间',
+                      dataIndex: 'created_at',
+                      key: 'created_at',
+                      render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+                    },
+                    {
+                      title: '操作',
+                      key: 'action',
+                      render: (_, record) => (
+                        <Space>
+                          <Button
+                            size="small"
+                            onClick={() => handleDownload(record.filepath, record.filename)}
+                          >
+                            下载
+                          </Button>
+                          {['admin', 'chief_judge'].includes(user.role) && (
+                            <Popconfirm
+                              title="确定要删除这个赛题文件吗？"
+                              onConfirm={() => handleDeleteProblem(record.id)}
+                            >
+                              <Button size="small" danger>删除</Button>
+                            </Popconfirm>
+                          )}
+                        </Space>
+                      )
+                    }
+                  ]}
+                  rowKey="id"
+                  pagination={false}
+                />
+              </Tabs.TabPane>
+              {user.role === 'contestant' && (
+                <Tabs.TabPane tab="我的答题" key="answer">
+                  {selectedModule?.status === 'in_progress' && (
+                    <div style={{ marginBottom: 16 }}>
+                      <Upload
+                        name="file"
+                        action={`/api/attachments/modules/${selectedModule?.id}/answer`}
+                        headers={{
+                          Authorization: axios.defaults.headers.common['Authorization']
+                        }}
+                        onChange={handleUploadAnswer}
+                      >
+                        <Button>上传答题</Button>
+                      </Upload>
+                    </div>
+                  )}
+                  <Table
+                    dataSource={answerAttachments}
+                    columns={[
+                      { title: '文件名', dataIndex: 'filename', key: 'filename' },
+                      {
+                        title: '上传时间',
+                        dataIndex: 'created_at',
+                        key: 'created_at',
+                        render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+                      },
+                      {
+                        title: '操作',
+                        key: 'action',
+                        render: (_, record) => (
+                          <Space>
+                            <Button
+                              size="small"
+                              onClick={() => handleDownload(record.filepath, record.filename)}
+                            >
+                              下载
+                            </Button>
+                            {selectedModule?.status === 'in_progress' && (
+                              <Popconfirm
+                                title="确定要删除这个答题文件吗？"
+                                onConfirm={() => handleDeleteAnswer(record.id)}
+                              >
+                                <Button size="small" danger>删除</Button>
+                              </Popconfirm>
+                            )}
+                          </Space>
+                        )
+                      }
+                    ]}
+                    rowKey="id"
+                    pagination={false}
+                  />
+                </Tabs.TabPane>
+              )}
+              {user.role === 'judge' && (
+                <Tabs.TabPane tab="选手答题" key="contestant_answers">
+                  <ContestantAnswers moduleId={selectedModule?.id} user={user} />
+                </Tabs.TabPane>
+              )}
+            </Tabs>
+          </Drawer>
+        </div>
+      );
+    }
+
+    // 裁判查看选手答题组件
+    function ContestantAnswers({ moduleId, user }) {
+      const [contestants, setContestants] = useState([]);
+      const [selectedContestant, setSelectedContestant] = useState(null);
+      const [answerAttachments, setAnswerAttachments] = useState([]);
+      const [loading, setLoading] = useState(false);
+
+      const loadMyContestants = async () => {
+        try {
+          const response = await axios.get(`/scoring/modules/${moduleId}/records`);
+          setContestants(response.data);
+        } catch (error) {
+          console.error('加载选手列表失败:', error);
+        }
+      };
+
+      const loadContestantAnswers = async (contestantId) => {
+        setLoading(true);
+        try {
+          const response = await axios.get(`/attachments/modules/${moduleId}/contestants/${contestantId}/answer`);
+          setAnswerAttachments(response.data);
+        } catch (error) {
+          console.error('加载选手答题失败:', error);
+          setAnswerAttachments([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleDownload = (filepath, filename) => {
+        window.open(`/api/attachments/download?filepath=${encodeURIComponent(filepath)}`);
+      };
+
+      useEffect(() => {
+        if (moduleId) {
+          loadMyContestants();
+        }
+      }, [moduleId]);
+
+      useEffect(() => {
+        if (selectedContestant) {
+          loadContestantAnswers(selectedContestant);
+        }
+      }, [selectedContestant]);
+
+      return (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <Select
+              placeholder="选择要查看的选手"
+              style={{ width: 300 }}
+              onChange={setSelectedContestant}
+              value={selectedContestant}
+            >
+              {contestants.map(c => (
+                <Option key={c.contestant_id} value={c.contestant_id}>
+                  {c.contestant_name} ({c.username})
+                </Option>
+              ))}
+            </Select>
+          </div>
+          {selectedContestant && (
+            <Table
+              loading={loading}
+              dataSource={answerAttachments}
+              columns={[
+                { title: '文件名', dataIndex: 'filename', key: 'filename' },
+                {
+                  title: '上传时间',
+                  dataIndex: 'created_at',
+                  key: 'created_at',
+                  render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+                },
+                {
+                  title: '操作',
+                  key: 'action',
+                  render: (_, record) => (
+                    <Button
+                      size="small"
+                      onClick={() => handleDownload(record.filepath, record.filename)}
+                    >
+                      下载查看
+                    </Button>
+                  )
+                }
+              ]}
+              rowKey="id"
+              pagination={false}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // 裁判-选手分配关系组件
+    function JudgeContestantAssignments({ eventId, user }) {
+      const [assignments, setAssignments] = useState([]);
+      const [loading, setLoading] = useState(false);
+
+      const loadAssignments = async () => {
+        setLoading(true);
+        try {
+          const response = await axios.get(`/events/${eventId}/judge-contestants`);
+          setAssignments(response.data);
+        } catch (error) {
+          console.error('加载分配关系失败:', error);
+          setAssignments([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        if (eventId) {
+          loadAssignments();
+        }
+      }, [eventId]);
+
+      const handleRemoveAssignment = async (judgeId, contestantId) => {
+        try {
+          await axios.delete(`/events/${eventId}/judge-contestants?judge_id=${judgeId}&contestant_id=${contestantId}`);
+          message.success('移除成功');
+          loadAssignments();
+        } catch (error) {
+          message.error('移除失败');
+        }
+      };
+
+      const columns = [
+        { title: '裁判ID', dataIndex: 'judge_id', key: 'judge_id', width: 80 },
+        { title: '裁判姓名', dataIndex: 'judge_name', key: 'judge_name' },
+        { title: '选手ID', dataIndex: 'contestant_id', key: 'contestant_id', width: 80 },
+        { title: '选手姓名', dataIndex: 'contestant_name', key: 'contestant_name' },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => (
+            user.role === 'admin' ? (
+              <Button
+                size="small"
+                danger
+                onClick={() => handleRemoveAssignment(record.judge_id, record.contestant_id)}
+              >
+                移除分配
+              </Button>
+            ) : null
+          )
+        }
+      ];
+
+      return (
+        <Table
+          loading={loading}
+          dataSource={assignments}
+          columns={columns}
+          rowKey={(record) => `${record.judge_id}-${record.contestant_id}`}
+          pagination={false}
+          size="small"
+        />
+      );
+    }
+
+    // 评分管理
+    function ScoringManagement({ user }) {
+      const [modules, setModules] = useState([]);
+      const [expandedRows, setExpandedRows] = useState([]);
+      const [contestantsData, setContestantsData] = useState({});
+      const [loading, setLoading] = useState(false);
+      const [drawerVisible, setDrawerVisible] = useState(false);
+      const [selectedContestant, setSelectedContestant] = useState(null);
+      const [selectedModule, setSelectedModule] = useState(null);
+
+      const loadModules = async () => {
+        setLoading(true);
+        try {
+          const response = await axios.get('/modules');
+          let filteredModules = response.data;
+          
+          // 裁判只能看到评分中和评分结束的模块
+          if (user.role === 'judge') {
+            filteredModules = response.data.filter(module => 
+              module.status === 'scoring' || module.status === 'scoring_finished'
+            );
+          }
+          
+          setModules(filteredModules);
+        } catch (error) {
+          message.error('加载模块失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const loadContestants = async (moduleId) => {
+        try {
+          const [recordsResponse] = await Promise.all([
+            axios.get(`/scoring/modules/${moduleId}/records`)
+          ]);
+          
+          const contestants = recordsResponse.data || [];
+          
+          // 为每个选手加载答题附件
+          const contestantsWithAttachments = await Promise.all(
+            contestants.map(async (contestant) => {
+              try {
+                const attachmentResponse = await axios.get(
+                  `/attachments/modules/${moduleId}/contestants/${contestant.contestant_id}/answer`
+                );
+                return {
+                  ...contestant,
+                  answerAttachments: attachmentResponse.data || []
+                };
+              } catch (error) {
+                return {
+                  ...contestant,
+                  answerAttachments: []
+                };
+              }
+            })
+          );
+
+          setContestantsData(prev => ({
+            ...prev,
+            [moduleId]: contestantsWithAttachments
+          }));
+        } catch (error) {
+          message.error('加载选手数据失败');
+          setContestantsData(prev => ({
+            ...prev,
+            [moduleId]: []
+          }));
+        }
+      };
+
+      useEffect(() => {
+        loadModules();
+      }, []);
+
+      const handleExpand = (expanded, record) => {
+        if (expanded) {
+          setExpandedRows([...expandedRows, record.id]);
+          loadContestants(record.id);
+        } else {
+          setExpandedRows(expandedRows.filter(id => id !== record.id));
+        }
+      };
+
+      const handleUpdateScore = async (moduleId, contestantId, itemId, score) => {
+        try {
+          // 立即更新本地状态，提供即时反馈
+          if (selectedContestant && selectedContestant.contestant_id === contestantId) {
+            const updatedItemResults = selectedContestant.item_results.map(item => {
+              if ((item.scoring_item_id || item.id) === itemId) {
+                return { ...item, judge_score: score };
+              }
+              return item;
+            });
+            setSelectedContestant({
+              ...selectedContestant,
+              item_results: updatedItemResults
+            });
+          }
+
+          // 同时更新主列表中的数据
+          setContestantsData(prev => {
+            const moduleContestants = prev[moduleId] || [];
+            const updatedContestants = moduleContestants.map(contestant => {
+              if (contestant.contestant_id === contestantId) {
+                const updatedItemResults = contestant.item_results.map(item => {
+                  if ((item.scoring_item_id || item.id) === itemId) {
+                    return { ...item, judge_score: score };
+                  }
+                  return item;
+                });
+                return {
+                  ...contestant,
+                  item_results: updatedItemResults
+                };
+              }
+              return contestant;
+            });
+            return {
+              ...prev,
+              [moduleId]: updatedContestants
+            };
+          });
+
+          // 后台保存到服务器
+          await axios.put(
+            `/scoring/modules/${moduleId}/contestants/${contestantId}/score`,
+            {
+              scoring_item_id: itemId,
+              judge_score: score
+            }
+          );
+          
+        } catch (error) {
+          message.error('评分保存失败：' + (error.response?.data?.error || '网络错误'));
+          // 如果保存失败，可以考虑恢复之前的状态
+          console.error('评分保存失败:', error);
+        }
+      };
+
+      const handleEditScoring = (contestant, module) => {
+        setSelectedContestant(contestant);
+        setSelectedModule(module);
+        setDrawerVisible(true);
+      };
+
+      const handleCreateScoringRecord = async () => {
+        try {
+          const response = await axios.post(`/scoring/modules/${selectedModule.id}/contestants/${selectedContestant.contestant_id}/create-record`);
+          message.success('创建评分记录成功');
+          
+          // 强制重新加载数据
+          const refreshData = async () => {
+            try {
+              // 重新获取选手的详细数据
+              const recordsResponse = await axios.get(`/scoring/modules/${selectedModule.id}/records`);
+              const contestants = recordsResponse.data || [];
+              
+              // 为每个选手加载答题附件（保持原有逻辑）
+              const contestantsWithAttachments = await Promise.all(
+                contestants.map(async (contestant) => {
+                  try {
+                    const attachmentResponse = await axios.get(
+                      `/attachments/modules/${selectedModule.id}/contestants/${contestant.contestant_id}/answer`
+                    );
+                    return {
+                      ...contestant,
+                      answerAttachments: attachmentResponse.data || []
+                    };
+                  } catch (error) {
+                    return {
+                      ...contestant,
+                      answerAttachments: []
+                    };
+                  }
+                })
+              );
+
+              // 更新主列表数据
+              setContestantsData(prev => ({
+                ...prev,
+                [selectedModule.id]: contestantsWithAttachments
+              }));
+
+              // 找到并更新当前选手数据
+              const updatedContestant = contestantsWithAttachments.find(c => c.contestant_id === selectedContestant.contestant_id);
+              if (updatedContestant) {
+                console.log('更新选手数据:', updatedContestant);
+                setSelectedContestant(updatedContestant);
+              }
+            } catch (refreshError) {
+              console.error('刷新数据失败:', refreshError);
+              message.error('刷新数据失败，请手动关闭并重新打开评分界面');
+            }
+          };
+
+          // 延迟刷新确保后端数据已更新
+          setTimeout(refreshData, 800);
+          
+        } catch (error) {
+          console.error('创建评分记录失败:', error);
+          message.error('创建评分记录失败：' + (error.response?.data?.error || '未知错误'));
+        }
+      };
+
+      // 单个选手AI评分处理函数
+      const handleContestantAiEvaluation = (moduleId, contestantId) => {
+        Modal.confirm({
+          title: '确认启动AI评分',
+          content: (
+            <div>
+              <p>⚠️ AI评分需要处理较长时间，请勿重复操作。</p>
+              <p>确定要对此选手启动AI评分吗？</p>
+            </div>
+          ),
+          okText: '确认启动',
+          cancelText: '取消',
+          onOk: async () => {
+            try {
+              await axios.post(`/modules/${moduleId}/contestants/${contestantId}/ai-evaluation`);
+              message.success('AI评分已启动，请耐心等待');
+            } catch (error) {
+              if (error.response?.status === 409) {
+                message.warning('AI评分正在进行中，请勿重复操作');
+              } else {
+                message.error('启动AI评分失败：' + (error.response?.data?.error || '未知错误'));
+              }
+            }
+          }
+        });
+      };
+
+      const statusConfig = {
+        pending: { text: '未开始', color: 'default' },
+        in_progress: { text: '进行中', color: 'processing' },
+        finished: { text: '已结束', color: 'success' },
+        scoring: { text: '评分中', color: 'warning' },
+        scoring_finished: { text: '评分结束', color: 'purple' }
+      };
+
+      const moduleColumns = [
+        { title: '模块名称', dataIndex: 'name', key: 'name' },
+        { 
+          title: '状态', 
+          dataIndex: 'status', 
+          key: 'status',
+          render: (status) => (
+            <Tag color={statusConfig[status]?.color}>{statusConfig[status]?.text}</Tag>
+          )
+        },
+        { title: '时长(分钟)', dataIndex: 'duration_minutes', key: 'duration_minutes' },
+        {
+          title: '选手数量',
+          key: 'contestant_count',
+          render: (_, record) => (
+            contestantsData[record.id] ? contestantsData[record.id].length : '-'
+          )
+        }
+      ];
+
+      const expandedRowRender = (moduleRecord) => {
+        const contestants = contestantsData[moduleRecord.id] || [];
+        
+        if (contestants.length === 0) {
+          return <div style={{ padding: 16, textAlign: 'center' }}>没有选手数据</div>;
+        }
+
+        const contestantColumns = [
+          { title: '选手', dataIndex: 'contestant_name', key: 'contestant_name', width: 120 },
+          { title: '用户名', dataIndex: 'username', key: 'username', width: 100 },
+          {
+            title: '答题文件',
+            key: 'attachments',
+            width: 200,
+            ellipsis: {
+              showTitle: false,
+            },
+            render: (_, record) => {
+              const filenames = record.answerAttachments?.map(a => a.filename).join(', ') || '未上传';
+              return (
+                <span 
+                  title={filenames}
+                  style={{ cursor: record.answerAttachments?.length ? 'pointer' : 'default' }}
+                  onClick={() => {
+                    if (record.answerAttachments?.length > 0) {
+                      window.open(`/attachments/download?filepath=${encodeURIComponent(record.answerAttachments[0].filepath)}`, '_blank');
+                    }
+                  }}
+                >
+                  {filenames}
+                </span>
+              );
+            }
+          },
+          {
+            title: 'AI评分',
+            key: 'ai_score',
+            width: 90,
+            render: (_, record) => {
+              const items = record.item_results.filter(item => item.id || item.scoring_item_id);
+              const aiTotal = items.reduce((sum, item) => sum + (parseFloat(item.ai_score) || 0), 0);
+              return <Text strong style={{ color: '#52c41a' }}>{aiTotal.toFixed(1)}</Text>;
+            }
+          },
+          {
+            title: '裁判评分',
+            key: 'judge_score',
+            width: 90,
+            render: (_, record) => {
+              const items = record.item_results.filter(item => item.id || item.scoring_item_id);
+              const judgeTotal = items.reduce((sum, item) => sum + (parseFloat(item.judge_score) || 0), 0);
+              return <Text strong style={{ color: '#1890ff' }}>{judgeTotal.toFixed(1)}</Text>;
+            }
+          },
+          {
+            title: '操作',
+            key: 'action',
+            width: ['admin', 'chief_judge'].includes(user.role) ? 180 : 100,
+            render: (_, record) => (
+              <Space>
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={() => handleEditScoring(record, moduleRecord)}
+                  disabled={moduleRecord.status === 'scoring_finished'}
+                >
+                  裁判评分
+                </Button>
+                {['admin', 'chief_judge'].includes(user.role) && (
+                  <Button
+                    size="small"
+                    onClick={() => handleContestantAiEvaluation(moduleRecord.id, record.contestant_id)}
+                    disabled={moduleRecord.status !== 'scoring'}
+                  >
+                    AI评分
+                  </Button>
+                )}
+              </Space>
+            )
+          }
+        ];
+
+        return (
+          <Table
+            columns={contestantColumns}
+            dataSource={contestants}
+            pagination={false}
+            size="small"
+            scroll={{ x: 900 }}
+            rowKey="id"
+          />
+        );
+      };
+
+      return (
+        <div>
+          {/* 页面标题 */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}>
+            <Title level={3} style={{ color: 'white', margin: 0 }}>
+              ✍️ 评分管理
+            </Title>
+            <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+              查看选手答题并进行人工评分和AI辅助评分
+            </Text>
+          </div>
+
+          <div style={{ 
+            marginBottom: 16,
+            padding: '16px',
+            background: '#e8f4fd',
+            borderRadius: '8px',
+            border: '1px solid #91d5ff'
+          }}>
+            <Text strong style={{ color: '#0958d9' }}>💡 使用提示：</Text>
+            <Text style={{ color: '#0958d9', marginLeft: '8px' }}>
+              点击模块名称展开查看该模块下的选手列表，然后可以查看答题和进行评分
+            </Text>
+          </div>
+          
+          <Table
+            loading={loading}
+            columns={moduleColumns}
+            dataSource={modules}
+            rowKey="id"
+            expandable={{
+              expandedRowKeys: expandedRows,
+              onExpand: handleExpand,
+              expandedRowRender: expandedRowRender
+            }}
+            pagination={{ pageSize: 10 }}
+          />
+
+          {/* 详细评分抽屉 */}
+          <Drawer
+            title={`详细评分 - ${selectedContestant?.contestant_name || ''}`}
+            placement="right"
+            open={drawerVisible}
+            onClose={() => setDrawerVisible(false)}
+            width="80%"
+          >
+            {selectedContestant && selectedModule && (
+              <div>
+                {/* 选手基本信息 */}
+                <Card size="small" style={{ marginBottom: 16 }}>
+                  <Descriptions column={2} size="small">
+                    <Descriptions.Item label="选手姓名">{selectedContestant.contestant_name}</Descriptions.Item>
+                    <Descriptions.Item label="用户名">{selectedContestant.username}</Descriptions.Item>
+                    <Descriptions.Item label="模块状态">
+                      <Tag color={statusConfig[selectedModule.status]?.color}>
+                        {statusConfig[selectedModule.status]?.text}
+                      </Tag>
+                    </Descriptions.Item>
+                  </Descriptions>
+                </Card>
+
+                {/* 答题文件 */}
+                {selectedContestant.answerAttachments && selectedContestant.answerAttachments.length > 0 && (
+                  <Card title="答题文件" size="small" style={{ marginBottom: 16 }}>
+                    <div>
+                      {selectedContestant.answerAttachments.map(attachment => (
+                        <div key={attachment.id} style={{ marginBottom: 8 }}>
+                          <Button 
+                            type="link" 
+                            onClick={() => window.open(`/attachments/download?filepath=${encodeURIComponent(attachment.filepath)}`, '_blank')}
+                          >
+                            {attachment.filename}
+                          </Button>
+                          <Text type="secondary" style={{ marginLeft: 16 }}>
+                            上传时间: {new Date(attachment.created_at).toLocaleString()}
+                          </Text>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {/* 详细评分项 */}
+                <Card title="评分详情" size="small">
+                  {(() => {
+                    const validItems = selectedContestant.item_results.filter(item => item.id || item.scoring_item_id);
+                    console.log('选手评分记录:', selectedContestant.item_results);
+                    console.log('有效评分项数量:', validItems.length);
+                    return validItems.length === 0;
+                  })() ? (
+                    <div style={{ textAlign: 'center', padding: 40 }}>
+                      <Text type="secondary">该选手尚未创建评分记录</Text>
+                      <br />
+                      <Button 
+                        type="primary" 
+                        onClick={handleCreateScoringRecord}
+                        disabled={selectedModule.status === 'scoring_finished'}
+                        style={{ marginTop: 16 }}
+                      >
+                        创建评分记录
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {/* 总分汇总 - 只在有评分记录时显示 */}
+                  {selectedContestant.item_results.filter(item => item.id || item.scoring_item_id).length > 0 && (
+                    <>
+
+                        <Table
+                          dataSource={selectedContestant.item_results.filter(item => item.id || item.scoring_item_id)}
+                          columns={[
+                        {
+                          title: '序号',
+                          key: 'index',
+                          width: 60,
+                          render: (_, record, index) => index + 1
+                        },
+                        {
+                          title: '评分项',
+                          dataIndex: 'description',
+                          key: 'description',
+                          width: 250,
+                          render: (text) => (
+                            <div 
+                              dangerouslySetInnerHTML={{ __html: text }} 
+                              style={{ maxWidth: '240px', overflow: 'hidden' }}
+                            />
+                          )
+                        },
+                        {
+                          title: '类型',
+                          dataIndex: 'evaluation_type',
+                          key: 'evaluation_type',
+                          width: 80,
+                          render: (type) => (
+                            <Tag color={type === 'objective' ? 'blue' : 'green'}>
+                              {type === 'objective' ? '客观' : '主观'}
+                            </Tag>
+                          )
+                        },
+                        {
+                          title: '满分',
+                          dataIndex: 'max_score',
+                          key: 'max_score',
+                          width: 80,
+                          render: (score) => <Text strong>{score}</Text>
+                        },
+                        {
+                          title: 'AI评分',
+                          dataIndex: 'ai_score',
+                          key: 'ai_score',
+                          width: 90,
+                          render: (score) => (
+                            score !== null && score !== undefined ? (
+                              <Tag color="blue">{parseFloat(score).toFixed(1)}</Tag>
+                            ) : (
+                              <Text type="secondary">未评分</Text>
+                            )
+                          )
+                        },
+                        {
+                          title: 'AI评估建议',
+                          dataIndex: 'ai_suggestion',
+                          key: 'ai_suggestion',
+                          width: 200,
+                          render: (suggestion) => (
+                            suggestion ? (
+                              <div 
+                                style={{
+                                  fontSize: '12px',
+                                  color: '#666',
+                                  backgroundColor: '#f6f8fa',
+                                  padding: '6px 8px',
+                                  borderRadius: '4px',
+                                  maxWidth: '190px',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  cursor: 'help'
+                                }}
+                                title={suggestion}
+                              >
+                                {suggestion}
+                              </div>
+                            ) : (
+                              <Text type="secondary" style={{ fontSize: '12px' }}>暂无建议</Text>
+                            )
+                          )
+                        },
+                        {
+                          title: '裁判评分',
+                          dataIndex: 'judge_score',
+                          key: 'judge_score',
+                          width: 120,
+                          render: (score, record) => (
+                            <InputNumber
+                              min={0}
+                              max={record.max_score}
+                              step={0.01}
+                              value={score}
+                              onChange={(val) => handleUpdateScore(selectedModule.id, selectedContestant.contestant_id, record.scoring_item_id || record.id, val)}
+                              disabled={selectedModule.status === 'scoring_finished'}
+                              style={{ width: 100 }}
+                              placeholder="0"
+                            />
+                          )
+                        },
+                        {
+                          title: '评分差异',
+                          key: 'score_diff',
+                          width: 90,
+                          render: (_, record) => {
+                            const aiScore = parseFloat(record.ai_score) || 0;
+                            const judgeScore = parseFloat(record.judge_score) || 0;
+                            const diff = Math.abs(aiScore - judgeScore);
+                            
+                            if (record.ai_score === null || record.judge_score === null) {
+                              return <Text type="secondary">-</Text>;
+                            }
+                            
+                            const color = diff <= 2 ? '#52c41a' : diff <= 5 ? '#faad14' : '#f5222d';
+                            return (
+                              <Text style={{ color, fontWeight: 'bold' }}>
+                                {diff.toFixed(1)}
+                              </Text>
+                            );
+                          }
+                        }
+                      ]}
+                      pagination={false}
+                      size="small"
+                      rowKey={(record) => record.id || record.scoring_item_id || Math.random()}
+                      scroll={{ x: 1000 }}
+                    />
+                    </>
+                  )}
+                </Card>
+              </div>
+            )}
+          </Drawer>
+        </div>
+      );
+    }
+
+    // 选手专用界面
+    function ContestantInterface({ user, onLogout }) {
+      const [currentModule, setCurrentModule] = useState(null);
+      const [problemAttachments, setProblemAttachments] = useState([]);
+      const [answerAttachments, setAnswerAttachments] = useState([]);
+      const [loading, setLoading] = useState(false);
+
+      const loadInProgressModule = async () => {
+        setLoading(true);
+        try {
+          const response = await axios.get('/modules');
+          const inProgressModules = response.data.filter(module => module.status === 'in_progress');
+          
+          if (inProgressModules.length > 0) {
+            setCurrentModule(inProgressModules[0]);
+            loadProblemAttachments(inProgressModules[0].id);
+            loadAnswerAttachments(inProgressModules[0].id, user.id);
+          } else {
+            setCurrentModule(null);
+          }
+        } catch (error) {
+          message.error('加载模块失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const loadProblemAttachments = async (moduleId) => {
+        try {
+          const response = await axios.get(`/attachments/modules/${moduleId}/problem`);
+          setProblemAttachments(response.data);
+        } catch (error) {
+          console.error('加载赛题附件失败:', error);
+          setProblemAttachments([]);
+        }
+      };
+
+      const loadAnswerAttachments = async (moduleId, contestantId) => {
+        try {
+          const response = await axios.get(`/attachments/modules/${moduleId}/contestants/${contestantId}/answer`);
+          setAnswerAttachments(response.data);
+        } catch (error) {
+          console.error('加载答题附件失败:', error);
+          setAnswerAttachments([]);
+        }
+      };
+
+      const handleUploadAnswer = async (info) => {
+        if (info.file.status === 'done') {
+          message.success('答题上传成功');
+          loadAnswerAttachments(currentModule.id, user.id);
+        } else if (info.file.status === 'error') {
+          message.error('答题上传失败');
+        }
+      };
+
+      const handleDeleteAnswer = async (id) => {
+        try {
+          await axios.delete(`/attachments/answer/${id}`);
+          message.success('删除成功');
+          loadAnswerAttachments(currentModule.id, user.id);
+        } catch (error) {
+          message.error('删除失败');
+        }
+      };
+
+      const handleDownload = (filepath, filename) => {
+        window.open(`/api/attachments/download?filepath=${encodeURIComponent(filepath)}`);
+      };
+
+      useEffect(() => {
+        loadInProgressModule();
+        // 每30秒刷新一次，检查是否有新的进行中模块
+        const interval = setInterval(loadInProgressModule, 30000);
+        return () => clearInterval(interval);
+      }, []);
+
+      if (loading) {
+        return (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            minHeight: '100vh' 
+          }}>
+            <Card>
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <div>正在加载比赛信息...</div>
+              </div>
+            </Card>
+          </div>
+        );
+      }
+
+      if (!currentModule) {
+        return (
+          <Layout style={{ 
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+          }}>
+            <Header style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              padding: '0 24px',
+              height: '64px',
+              lineHeight: '64px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <span style={{ fontSize: '18px' }}>🏆</span>
+                </div>
+                <div style={{ color: 'white', fontSize: '16px', fontWeight: 'bold' }}>
+                  世界技能大赛 - 选手端
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  padding: '6px 12px',
+                  borderRadius: '16px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ fontSize: '14px', color: 'white' }}>👤 {user.name}</span>
+                </div>
+                <Button 
+                  type="link" 
+                  onClick={onLogout} 
+                  style={{ 
+                    color: 'white',
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    height: '32px',
+                    fontSize: '13px'
+                  }}
+                >
+                  🚪 退出
+                </Button>
+              </div>
+            </Header>
+            <Content style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              minHeight: 'calc(100vh - 64px)',
+              padding: '24px'
+            }}>
+              <Card style={{ 
+                width: 500, 
+                textAlign: 'center',
+                borderRadius: '16px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)'
+              }}>
+                <div style={{ fontSize: '64px', marginBottom: '24px' }}>⏳</div>
+                <Title level={3}>暂无进行中的模块</Title>
+                <Text type="secondary" style={{ fontSize: '16px' }}>
+                  比赛尚未开始，请耐心等待
+                </Text>
+                <div style={{ marginTop: '32px' }}>
+                  <Button 
+                    type="primary" 
+                    size="large" 
+                    onClick={loadInProgressModule}
+                    icon={<span style={{ marginRight: '8px' }}>🔄</span>}
+                  >
+                    刷新状态
+                  </Button>
+                </div>
+              </Card>
+            </Content>
+          </Layout>
+        );
+      }
+
+      return (
+        <Layout style={{ 
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+        }}>
+          <Header style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            padding: '0 24px',
+            height: '64px',
+            lineHeight: '64px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                background: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <span style={{ fontSize: '18px' }}>🏆</span>
+              </div>
+              <div style={{ lineHeight: '1.4' }}>
+                <div style={{ color: 'white', fontSize: '16px', fontWeight: 'bold' }}>
+                  {currentModule.name}
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px' }}>
+                  比赛进行中 · 时长: {currentModule.duration_minutes} 分钟
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                padding: '6px 12px',
+                borderRadius: '16px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '14px', color: 'white' }}>👤 {user.name}</span>
+              </div>
+              <Button 
+                type="link" 
+                onClick={onLogout} 
+                style={{ 
+                  color: 'white',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  height: '32px',
+                  fontSize: '13px'
+                }}
+              >
+                🚪 退出
+              </Button>
+            </div>
+          </Header>
+          <Content style={{ padding: '24px' }}>
+            {/* 提示信息 */}
+            <div style={{
+              marginBottom: '24px',
+              padding: '16px 24px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '12px',
+              color: 'white',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }}>
+              <Text style={{ color: 'white', fontSize: '16px', fontWeight: 500 }}>
+                📝 请下载赛题附件，完成答题后上传您的作品文件
+              </Text>
+            </div>
+
+            <Row gutter={24}>
+              <Col span={12}>
+                <Card 
+                  title={<span style={{ fontSize: '16px', fontWeight: 600 }}>📄 赛题附件</span>}
+                  style={{ 
+                    height: '100%',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}
+                  headStyle={{
+                    background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)'
+                  }}
+                >
+                  {problemAttachments.length === 0 ? (
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '60px 40px',
+                      color: '#999'
+                    }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📭</div>
+                      <Text type="secondary">暂无赛题文件</Text>
+                    </div>
+                  ) : (
+                    <Table
+                      dataSource={problemAttachments}
+                      columns={[
+                        { title: '文件名', dataIndex: 'filename', key: 'filename' },
+                        {
+                          title: '上传时间',
+                          dataIndex: 'created_at',
+                          key: 'created_at',
+                          render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+                        },
+                        {
+                          title: '操作',
+                          key: 'action',
+                          render: (_, record) => (
+                            <Button
+                              size="small"
+                              onClick={() => handleDownload(record.filepath, record.filename)}
+                            >
+                              下载
+                            </Button>
+                          )
+                        }
+                      ]}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                    />
+                  )}
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card 
+                  title={<span style={{ fontSize: '16px', fontWeight: 600 }}>✍️ 我的答题</span>}
+                  style={{ 
+                    height: '100%',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}
+                  headStyle={{
+                    background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)'
+                  }}
+                >
+                  <div style={{ marginBottom: 16 }}>
+                    <Upload
+                      name="file"
+                      action={`/api/attachments/modules/${currentModule.id}/answer`}
+                      headers={{
+                        Authorization: axios.defaults.headers.common['Authorization']
+                      }}
+                      onChange={handleUploadAnswer}
+                      multiple
+                    >
+                      <Button 
+                        type="primary" 
+                        size="large"
+                        block
+                        icon={<span style={{ marginRight: '8px' }}>📤</span>}
+                      >
+                        上传答题文件
+                      </Button>
+                    </Upload>
+                  </div>
+                  {answerAttachments.length === 0 ? (
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '60px 40px',
+                      color: '#999'
+                    }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📂</div>
+                      <Text type="secondary">暂未上传答题文件</Text>
+                    </div>
+                  ) : (
+                    <Table
+                      dataSource={answerAttachments}
+                      columns={[
+                        { title: '文件名', dataIndex: 'filename', key: 'filename' },
+                        {
+                          title: '上传时间',
+                          dataIndex: 'created_at',
+                          key: 'created_at',
+                          render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm')
+                        },
+                        {
+                          title: '操作',
+                          key: 'action',
+                          render: (_, record) => (
+                            <Space>
+                              <Button
+                                size="small"
+                                onClick={() => handleDownload(record.filepath, record.filename)}
+                              >
+                                下载
+                              </Button>
+                              <Popconfirm
+                                title="确定要删除这个文件吗？"
+                                onConfirm={() => handleDeleteAnswer(record.id)}
+                              >
+                                <Button size="small" danger>删除</Button>
+                              </Popconfirm>
+                            </Space>
+                          )
+                        }
+                      ]}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                    />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          </Content>
+        </Layout>
+      );
+    }
+
+    // 主应用
+    function App() {
+      const [user, setUser] = useState(null);
+      const [selectedMenu, setSelectedMenu] = useState('competitions');
+
+      // 从URL hash获取路由
+      const getRouteFromHash = () => {
+        const hash = window.location.hash.slice(1); // 移除 # 号
+        return hash || null;
+      };
+
+      // 设置URL hash
+      const setRouteHash = (route) => {
+        window.location.hash = route;
+      };
+
+      useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          axios.get('/auth/profile')
+            .then(response => {
+              const userData = response.data.user;
+              setUser(userData);
+              
+              // 从URL hash获取初始路由
+              const hashRoute = getRouteFromHash();
+              if (hashRoute && ['competitions', 'events', 'modules', 'scoring', 'users'].includes(hashRoute)) {
+                setSelectedMenu(hashRoute);
+              } else {
+                // 根据用户角色设置默认菜单
+                const defaultMenu = userData.role === 'judge' ? 'scoring' : 'competitions';
+                setSelectedMenu(defaultMenu);
+                setRouteHash(defaultMenu);
+              }
+            })
+            .catch(() => {
+              localStorage.removeItem('token');
+              setAuthToken(null);
+            });
+        }
+      }, []);
+
+      // 监听浏览器前进后退
+      useEffect(() => {
+        const handleHashChange = () => {
+          const route = getRouteFromHash();
+          if (route && ['competitions', 'events', 'modules', 'scoring', 'users'].includes(route)) {
+            setSelectedMenu(route);
+          }
+        };
+
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+      }, []);
+
+      const handleLogout = () => {
+        setUser(null);
+        setAuthToken(null);
+      };
+
+      if (!user) {
+        return <LoginPage onLogin={setUser} />;
+      }
+
+      // 选手使用专用界面
+      if (user.role === 'contestant') {
+        return <ContestantInterface user={user} onLogout={handleLogout} />;
+      }
+
+      const menuItems = [
+        { 
+          key: 'competitions', 
+          label: (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>🏆</div>
+              <div style={{ fontSize: '12px' }}>赛事管理</div>
+            </div>
+          ),
+          roles: ['admin', 'chief_judge'] 
+        },
+        { 
+          key: 'events', 
+          label: (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>📋</div>
+              <div style={{ fontSize: '12px' }}>赛项管理</div>
+            </div>
+          ),
+          roles: ['admin', 'chief_judge'] 
+        },
+        { 
+          key: 'modules', 
+          label: (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>📦</div>
+              <div style={{ fontSize: '12px' }}>模块管理</div>
+            </div>
+          ),
+          roles: ['admin', 'chief_judge'] 
+        },
+        { 
+          key: 'scoring', 
+          label: (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>✍️</div>
+              <div style={{ fontSize: '12px' }}>评分管理</div>
+            </div>
+          ),
+          roles: ['admin', 'chief_judge', 'judge'] 
+        },
+        { 
+          key: 'users', 
+          label: (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>👥</div>
+              <div style={{ fontSize: '12px' }}>用户管理</div>
+            </div>
+          ),
+          roles: ['admin'] 
+        },
+      ].filter(item => item.roles.includes(user.role));
+
+      const renderContent = () => {
+        switch (selectedMenu) {
+          case 'users':
+            return <UserManagement />;
+          case 'competitions':
+            return <CompetitionManagement user={user} />;
+          case 'events':
+            return <EventManagement user={user} />;
+          case 'modules':
+            return <ModuleManagement user={user} />;
+          case 'scoring':
+            return <ScoringManagement user={user} />;
+          default:
+            return <div>选择一个菜单项</div>;
+        }
+      };
+
+      return (
+        <Layout style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
+          <Header style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            padding: '0 24px',
+            height: '64px',
+            lineHeight: '64px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                background: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <span style={{ fontSize: '18px' }}>🏆</span>
+              </div>
+              <div style={{ lineHeight: '1.4' }}>
+                <div style={{ color: 'white', fontSize: '16px', fontWeight: 'bold' }}>
+                  世界技能大赛
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px' }}>
+                  AI 智能评分系统
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '64px' }}>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                padding: '6px 12px',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                height: '32px',
+                maxWidth: '200px'
+              }}>
+                <span style={{ fontSize: '14px', flexShrink: 0 }}>👤</span>
+                <span style={{ 
+                  fontWeight: 500, 
+                  fontSize: '14px', 
+                  color: 'white',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '80px'
+                }}>{user.name}</span>
+                <Tag style={{ 
+                  margin: 0,
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  color: 'white',
+                  border: 'none',
+                  fontSize: '11px',
+                  padding: '0 6px',
+                  height: '18px',
+                  lineHeight: '18px',
+                  flexShrink: 0
+                }}>
+                  {user.role === 'admin' ? '管理员' : 
+                   user.role === 'chief_judge' ? '裁判长' : 
+                   user.role === 'judge' ? '裁判' : '选手'}
+                </Tag>
+              </div>
+              <Button 
+                type="link" 
+                onClick={handleLogout} 
+                style={{ 
+                  color: 'white',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  height: '32px',
+                  fontSize: '13px'
+                }}
+              >
+                🚪 退出
+              </Button>
+            </div>
+          </Header>
+          <Layout>
+            <Sider width={88} style={{ 
+              background: '#fff',
+              boxShadow: '2px 0 8px rgba(0,0,0,0.05)'
+            }}>
+              <Menu
+                mode="inline"
+                selectedKeys={[selectedMenu]}
+                style={{ 
+                  height: '100%',
+                  borderRight: 0,
+                  paddingTop: '8px'
+                }}
+                items={menuItems}
+                onSelect={({ key }) => {
+                  setSelectedMenu(key);
+                  setRouteHash(key);
+                }}
+              />
+            </Sider>
+            <Layout style={{ padding: '24px', background: 'transparent' }}>
+              <Content
+                style={{
+                  padding: 32,
+                  margin: 0,
+                  minHeight: 280,
+                  background: '#fff',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                }}
+              >
+                {renderContent()}
+              </Content>
+            </Layout>
+          </Layout>
+        </Layout>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
